@@ -120,7 +120,7 @@ scripts/
   - 注意：header 用「去掉 padding 自然上移」而非 `margin-top: -40px`——负 margin 上移会让 Chromium 命中测试失效（内容视觉在 y=0 但点击区域仍在下移处），导致操作栏看似盖住标题区内容。
 - **操作栏（窗口控制）**：渲染在内容栏右上角，**操作栏整条与按钮背景均透明**（`background: transparent`，由注入样式表 `[data-dsh-window-controls]` / `[data-dsh-wc-button]` 规则驱动），不绘制任何色块、与页面完全融合；图标用 `--dsw-alias-label-secondary` + 85% 透明度。**hover 背景完全由注入 CSS 驱动**（内联样式不设 background/opacity，避免内联优先级压过 `:hover` 规则）：普通按钮 hover 用 `color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent)`（主题感知、清晰可见——dsh 自带 `interactive-bg-hover` 只有 ~6% alpha 几乎不可见），关闭按钮 hover 用 `--dsw-alias-state-error-primary` 变红。验证脚本通过 CDP `CSS.forcePseudoState` 强制 hover 断言背景生效。
 - **拖拽条范围自适应**：hero（未打开会话）时拖拽条覆盖内容栏整个顶部 40px；打开会话后拆成**两段**覆盖标题行的非交互区域——段 1 为标题 crumbs 区（列左缘 → 模式切换左缘），段 2 为模式切换与 Session log 之间的空白弹性区，总宽度从 ~148px 扩大到 ~680px（1280 窗口）。模式切换、Session log 按钮不被拖拽条覆盖，保持可点击。操作栏与拖拽条通过 ResizeObserver/MutationObserver 锚定内容栏与标题栏几何，窗口缩放、侧栏折叠/展开、面板拖动时跟随移动。
-- **本地兜底页**（启动中/出错时）：`src/renderer/src/assets/main.css` 给 `body` 设置 `-webkit-app-region: drag`，该页面无交互控件，整页可拖动。
+- **本地兜底页 / 启动页**（启动中/出错时）：`src/renderer/src/App.tsx` + `assets/main.css`，重设计为 **"DeepSeek Harness Desktop" 品牌启动画面**——深海测深背景（多层 radial-gradient 等高线 + 声呐脉冲焦点）、左下对齐的终端横幅排版（等宽眉标 + 大字号全称标题 + 等宽状态行脉冲动画）、右下角版本号 readout；错误态用同一声调显示主进程错误信息。`body` 设置 `-webkit-app-region: drag`，该页面无交互控件，整页可拖动。验证：`node scripts/verify-boot-screen.mjs`（结构断言）、`node scripts/screenshot-boot.mjs`（截图）。
 - **右键菜单**：Electron 默认不提供原生右键菜单，主进程 `registerContextMenu`（`src/main/window-controls.ts`）监听 `webContents` 的 `context-menu` 事件并按点击上下文动态构建菜单：
   - 可编辑区域（输入框/composer）：撤销/重做/剪切/复制/粘贴/全选（按 `editFlags` 启用/禁用）；
   - 选中文本（非编辑区）：复制/全选；

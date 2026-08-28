@@ -1,175 +1,313 @@
 @import './base.css';
 
+/* ============================================================
+   Startup / fallback screen — "DeepSeek Harness Desktop"
+   A left-anchored terminal banner over a deep-sea bathymetry
+   field. Palette derives from the DeepSeek brand tokens used by
+   the harness theme (deepseek-400/450/500 blues on bluish-1000).
+   ============================================================ */
+
+:root {
+  --ds-bg: #0b0d12; /* deep sea near-black (bluish-1000 family) */
+  --ds-bg-soft: #10131b;
+  --ds-blue-500: #4176e6; /* deepseek-500 */
+  --ds-blue-450: #5686fe; /* deepseek-450 */
+  --ds-blue-400: #679efe; /* deepseek-400 */
+  --ds-ink: #eef1f6; /* cold white text */
+  --ds-ink-dim: #9ba1ac; /* muted text */
+  --ds-ink-faint: #5b616d; /* faint text */
+  --ds-line: rgba(103, 158, 254, 0.14); /* contour line */
+  --ds-line-strong: rgba(103, 158, 254, 0.28);
+}
+
+html,
+body {
+  height: 100%;
+}
+
 body {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   overflow: hidden;
-  background-image: url('./wavy-lines.svg');
-  background-size: cover;
+  background: var(--ds-bg);
+  color: var(--ds-ink);
   user-select: none;
   /* The native frame is hidden (frame: false); this local fallback page has
      no interactive controls, so the whole surface is a drag region. The real
      harness UI gets its own drag strip from the window-controls plugin. */
   -webkit-app-region: drag;
-}
-
-code {
-  font-weight: 600;
-  padding: 3px 5px;
-  border-radius: 2px;
-  background-color: var(--color-background-mute);
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    SF Mono,
-    Menlo,
-    Consolas,
-    Liberation Mono,
-    monospace;
-  font-size: 85%;
+  cursor: default;
 }
 
 #root {
+  flex: 1;
+  display: flex;
+}
+
+/* ---- bathymetry field: contour bands + sonar focus ---- */
+
+.boot {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 56px 64px 48px;
+  overflow: hidden;
+}
+
+.boot-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Depth bands: concentric contour ellipses drifting off-center, like a
+     sea-floor survey. Built from layered radial gradients so no image
+     asset is needed and the whole page stays a drag region. */
+  background:
+    radial-gradient(120% 90% at 78% 18%, rgba(86, 134, 254, 0.10) 0%, transparent 42%),
+    radial-gradient(90% 80% at 70% 8%, rgba(65, 118, 230, 0.16) 0%, transparent 40%),
+    radial-gradient(70% 90% at 88% 30%, rgba(103, 158, 254, 0.08) 0%, transparent 55%),
+    radial-gradient(130% 100% at 22% 108%, rgba(65, 118, 230, 0.12) 0%, transparent 50%),
+    radial-gradient(160% 120% at 50% 130%, rgba(16, 19, 27, 1) 0%, rgba(11, 13, 18, 0) 60%),
+    linear-gradient(180deg, #0c0e14 0%, #0b0d12 55%, #0e1119 100%);
+}
+
+/* Contour hairlines: a grid of fine arcs suggest the survey grid without
+   reading as decoration — it is the instrument readout of the tool. */
+.boot-field::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-radial-gradient(120% 90% at 78% 18%, transparent 0 3.5%, var(--ds-line) 3.5% 3.6%, transparent 3.6% 6%),
+    repeating-radial-gradient(90% 80% at 70% 8%, transparent 0 5%, var(--ds-line) 5% 5.1%, transparent 5.1% 8.5%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 90%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 90%);
+}
+
+/* Sonar focus: one slow expanding ring, the only motion on the page. */
+.boot-sonar {
+  position: absolute;
+  top: 16%;
+  right: 12%;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  border: 1px solid var(--ds-line-strong);
+  opacity: 0.9;
+  animation: ds-sonar 6.5s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+  pointer-events: none;
+}
+
+.boot-sonar::before,
+.boot-sonar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--ds-line-strong);
+}
+
+.boot-sonar::before {
+  animation: ds-sonar-ring 6.5s cubic-bezier(0.22, 0.61, 0.36, 1) 1.1s infinite;
+}
+
+.boot-sonar::after {
+  animation: ds-sonar-ring 6.5s cubic-bezier(0.22, 0.61, 0.36, 1) 2.2s infinite;
+}
+
+@keyframes ds-sonar {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.55;
+  }
+}
+
+@keyframes ds-sonar-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+/* ---- banner: left-anchored terminal title ---- */
+
+.boot-banner {
+  position: relative;
+  z-index: 1;
+}
+
+.boot-eyebrow {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--ds-blue-400);
+  margin: 0 0 14px;
+  opacity: 0.85;
+}
+
+.boot-title {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    sans-serif;
+  font-size: clamp(30px, 4.2vw, 46px);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.08;
+  margin: 0;
+  color: var(--ds-ink);
+}
+
+/* ---- status: mono progress / error readout ---- */
+
+.boot-status {
+  position: relative;
+  z-index: 1;
+  margin-top: 34px;
+  padding-left: 3px;
+}
+
+.boot-line {
   display: flex;
   align-items: center;
+  gap: 12px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 15px;
+  color: var(--ds-ink-dim);
+  margin: 0;
+}
+
+.boot-dots {
+  display: inline-flex;
+  gap: 5px;
+  width: 26px;
   justify-content: center;
-  flex-direction: column;
-  margin-bottom: 80px;
 }
 
-.logo {
-  margin-bottom: 20px;
-  -webkit-user-drag: none;
-  height: 128px;
-  width: 128px;
-  will-change: filter;
-  transition: filter 300ms;
+.boot-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ds-blue-400);
+  animation: ds-dot 1.4s ease-in-out infinite;
 }
 
-.logo:hover {
-  filter: drop-shadow(0 0 1.2em #6988e6aa);
+.boot-dots span:nth-child(2) {
+  animation-delay: 0.2s;
 }
 
-.creator {
-  font-size: 14px;
-  line-height: 16px;
-  color: var(--ev-c-text-2);
-  font-weight: 600;
-  margin-bottom: 10px;
+.boot-dots span:nth-child(3) {
+  animation-delay: 0.4s;
 }
 
-.text {
-  font-size: 28px;
-  color: var(--ev-c-text-1);
-  font-weight: 700;
-  line-height: 32px;
-  text-align: center;
-  margin: 0 10px;
-  padding: 16px 0;
+@keyframes ds-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }
 
-.tip {
-  font-size: 16px;
-  line-height: 24px;
-  color: var(--ev-c-text-2);
-  font-weight: 600;
+.boot-sub {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--ds-ink-faint);
+  margin: 10px 0 0 38px;
 }
 
-.react {
-  background: -webkit-linear-gradient(315deg, #087ea4 55%, #7c93ee);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
+.boot-line-error {
+  color: #ff6b6b;
 }
 
-.ts {
-  background: -webkit-linear-gradient(315deg, #3178c6 45%, #f0dc4e);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
+.boot-detail {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ds-ink-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 2px solid var(--ds-blue-500);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 14px 0 0 38px;
+  padding: 12px 16px;
+  border-radius: 0 10px 10px 0;
+  max-height: 220px;
+  overflow: auto;
 }
 
-.actions {
-  display: flex;
-  padding-top: 32px;
-  margin: -6px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-.action {
-  flex-shrink: 0;
-  padding: 6px;
-}
-
-.action a {
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  border: 1px solid transparent;
-  text-align: center;
-  font-weight: 600;
-  white-space: nowrap;
-  border-radius: 20px;
-  padding: 0 20px;
-  line-height: 38px;
-  font-size: 14px;
-  border-color: var(--ev-button-alt-border);
-  color: var(--ev-button-alt-text);
-  background-color: var(--ev-button-alt-bg);
-}
-
-.action a:hover {
-  border-color: var(--ev-button-alt-hover-border);
-  color: var(--ev-button-alt-hover-text);
-  background-color: var(--ev-button-alt-hover-bg);
-}
+/* ---- versions readout, bottom-right ---- */
 
 .versions {
   position: absolute;
-  bottom: 30px;
-  margin: 0 auto;
-  padding: 15px 0;
-  font-family: 'Menlo', 'Lucida Console', monospace;
+  bottom: 34px;
+  right: 40px;
+  z-index: 1;
   display: inline-flex;
-  overflow: hidden;
-  align-items: center;
-  border-radius: 22px;
-  background-color: #202127;
-  backdrop-filter: blur(24px);
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--ds-ink-faint);
+  opacity: 0.8;
 }
 
 .versions li {
-  display: block;
-  float: left;
-  border-right: 1px solid var(--ev-c-gray-1);
-  padding: 0 20px;
-  font-size: 14px;
-  line-height: 14px;
-  opacity: 0.8;
-  &:last-child {
-    border: none;
-  }
+  padding: 0 14px;
+  border-right: 1px solid var(--ds-line);
+}
+
+.versions li:first-child {
+  padding-left: 0;
+}
+
+.versions li:last-child {
+  border-right: none;
+  padding-right: 0;
 }
 
 @media (max-width: 720px) {
-  .text {
-    font-size: 20px;
+  .boot {
+    padding: 40px 28px 36px;
   }
-}
 
-@media (max-width: 620px) {
+  .boot-title {
+    font-size: 26px;
+  }
+
   .versions {
     display: none;
   }
 }
 
-@media (max-width: 350px) {
-  .tip,
-  .actions {
-    display: none;
+@media (prefers-reduced-motion: reduce) {
+  .boot-sonar,
+  .boot-sonar::before,
+  .boot-sonar::after,
+  .boot-dots span {
+    animation: none;
   }
 }
