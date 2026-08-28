@@ -11,10 +11,10 @@
  * sidebar is not offset, so it reaches the very top of the window. Besides
  * the overlay entries, this module injects a small stylesheet that adapts the
  * top band by conversation state (see `titleBarCss`): in the hero state the
- * center column keeps a `TITLE_BAR_HEIGHT` top padding for the controls,
- * while with a conversation open the header starts at the very top so its
- * title row (title, mode, Session log) shares the top row with the window
- * controls.
+ * center column has no top padding, so the content area reaches the very top
+ * of the window (the overlay controls share that top row); with a
+ * conversation open the header starts at the very top too, so its title row
+ * (title, mode, Session log) shares the top row with the window controls.
  *
  * The controls call `window.api.windowControls.*`, exposed by the
  * dsh-desktop preload bridge, which talks to the Electron main process over
@@ -48,9 +48,10 @@ const TITLE_BAR_CSS_ID = 'dsh-desktop-title-bar'
  * sidebar must reach the very top of the window, so the offset is applied to
  * the center column alone. The layout differs by conversation state:
  *
- * - **Hero (no open conversation)**: the conversation header is hidden, so
- *   the center column gets `padding-top: <height>` + `height: calc(100% -
- *   <height>)` to reserve the top row for the overlay controls.
+ * - **Hero (no open conversation)**: the conversation header is hidden and the
+ *   content — the centered hero composer — starts at the very top of the
+ *   window; the top row is shared with the overlay window controls. No padding
+ *   is applied, so the content area reaches the top edge.
  * - **Active (conversation open)**: the center column gets no top padding, so
  *   the conversation header (`wSkVaW_header` in the conversation package)
  *   naturally starts at the very top and its title row — session title, mode,
@@ -69,16 +70,28 @@ const TITLE_BAR_CSS_ID = 'dsh-desktop-title-bar'
  * surfaces. `:has()` is supported by the Electron 39 Chromium.
  */
 const titleBarCss = `
-div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"][class*="headerHidden"]) {
-  padding-top: ${TITLE_BAR_HEIGHT}px;
-  height: calc(100% - ${TITLE_BAR_HEIGHT}px);
-}
-div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"]:not([class*="headerHidden"])) {
+div:has(> [data-shell-overlay]) > [class*="centerCol"] {
   padding-top: 0px;
   height: 100%;
 }
 div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
   margin-right: ${TITLE_BAR_HEIGHT + 70}px;
+}
+[data-dsh-window-controls] {
+  background: transparent;
+}
+[data-dsh-window-controls] [data-dsh-wc-button] {
+  background: transparent;
+  opacity: 0.85;
+}
+[data-dsh-window-controls] [data-dsh-wc-button]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  opacity: 1;
+}
+[data-dsh-window-controls] [data-dsh-wc-button][data-close]:hover {
+  background: var(--dsw-alias-bg-danger, #e81123);
+  color: #ffffff;
+  opacity: 1;
 }
 `
 

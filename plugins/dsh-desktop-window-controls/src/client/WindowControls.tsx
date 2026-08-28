@@ -17,8 +17,10 @@
  * Both elements are anchored to the center column's geometry (tracked with a
  * ResizeObserver), so they follow the column as the sidebar or details panel
  * widths change and when the window resizes. The sidebar reaches the very top
- * of the window (y = 0); the center column is offset down by `TITLE_BAR_HEIGHT`
- * via an injected stylesheet (see `client/index.ts`).
+ * of the window (y = 0), and the center column content does too — the
+ * injected stylesheet (see `client/index.ts`) removes any top offset, so the
+ * hero content and the conversation header start at the window's top edge,
+ * sharing the top row with the overlay controls.
  *
  * Pure React + inline styles using the harness theme CSS variables
  * (`--dsw-alias-*`) so the controls follow the active color scheme. All
@@ -81,7 +83,8 @@ const styles = {
     alignItems: 'center',
     height: `${TITLE_BAR_HEIGHT}px`,
     zIndex: 1000,
-    // Keep the buttons readable over any page surface.
+    // Transparent: the controls float over the content without painting a
+    // strip of their own; hover feedback lives on the buttons only.
     background: 'transparent',
     userSelect: 'none' as const,
     WebkitAppRegion: 'no-drag' as const,
@@ -96,19 +99,16 @@ const styles = {
     margin: 0,
     padding: 0,
     background: 'transparent',
-    color: 'var(--dsw-alias-label-primary)',
+    color: 'var(--dsw-alias-label-secondary)',
     fontFamily: 'inherit',
     fontSize: '13px',
     lineHeight: '1',
     cursor: 'default',
     outline: 'none',
-  } as React.CSSProperties,
-  buttonHover: {
-    background: 'var(--dsw-alias-bg-hover)',
-  } as React.CSSProperties,
-  closeHover: {
-    background: 'var(--dsw-alias-bg-danger, #e81123)',
-    color: '#ffffff',
+    // Softer icon weight that still reads over any surface; hover states
+    // (background / opacity) live in the injected stylesheet
+    // (`[data-dsh-window-controls] [data-dsh-wc-button]` rules).
+    opacity: 0.85,
   } as React.CSSProperties,
   icon: {
     width: '12px',
@@ -327,14 +327,13 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
           data-dsh-drag-strip
         />
       ))}
-      <div style={rootStyle} role="toolbar" aria-label="Window controls">
+      <div style={rootStyle} role="toolbar" aria-label="Window controls" data-dsh-window-controls>
       <button
         type="button"
         style={styles.button}
+        data-dsh-wc-button
         aria-label="Minimize"
         title="Minimize"
-        onMouseEnter={(e) => { e.currentTarget.style.background = styles.buttonHover.background ?? '' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         onClick={() => bridge.minimize()}
       >
         <MinimizeIcon />
@@ -342,10 +341,9 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
       <button
         type="button"
         style={styles.button}
+        data-dsh-wc-button
         aria-label={maximized ? 'Restore' : 'Maximize'}
         title={maximized ? 'Restore' : 'Maximize'}
-        onMouseEnter={(e) => { e.currentTarget.style.background = styles.buttonHover.background ?? '' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         onClick={onToggleMaximize}
       >
         {maximized ? <RestoreIcon /> : <MaximizeIcon />}
@@ -353,16 +351,10 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
       <button
         type="button"
         style={styles.button}
+        data-dsh-wc-button
+        data-close
         aria-label="Close"
         title="Close"
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = styles.closeHover.background ?? ''
-          e.currentTarget.style.color = styles.closeHover.color ?? ''
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = 'var(--dsw-alias-label-primary)'
-        }}
         onClick={() => bridge.close()}
       >
         <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true">

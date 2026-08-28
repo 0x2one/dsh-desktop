@@ -63,7 +63,8 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       alignItems: "center",
       height: `${TITLE_BAR_HEIGHT}px`,
       zIndex: 1e3,
-      // Keep the buttons readable over any page surface.
+      // Transparent: the controls float over the content without painting a
+      // strip of their own; hover feedback lives on the buttons only.
       background: "transparent",
       userSelect: "none",
       WebkitAppRegion: "no-drag"
@@ -78,19 +79,16 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       margin: 0,
       padding: 0,
       background: "transparent",
-      color: "var(--dsw-alias-label-primary)",
+      color: "var(--dsw-alias-label-secondary)",
       fontFamily: "inherit",
       fontSize: "13px",
       lineHeight: "1",
       cursor: "default",
-      outline: "none"
-    },
-    buttonHover: {
-      background: "var(--dsw-alias-bg-hover)"
-    },
-    closeHover: {
-      background: "var(--dsw-alias-bg-danger, #e81123)",
-      color: "#ffffff"
+      outline: "none",
+      // Softer icon weight that still reads over any surface; hover states
+      // (background / opacity) live in the injected stylesheet
+      // (`[data-dsh-window-controls] [data-dsh-wc-button]` rules).
+      opacity: 0.85
     },
     icon: {
       width: "12px",
@@ -254,20 +252,15 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
         },
         index
       )),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: rootStyle, role: "toolbar", "aria-label": "Window controls", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: rootStyle, role: "toolbar", "aria-label": "Window controls", "data-dsh-window-controls": true, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
             type: "button",
             style: styles.button,
+            "data-dsh-wc-button": true,
             "aria-label": "Minimize",
             title: "Minimize",
-            onMouseEnter: (e) => {
-              e.currentTarget.style.background = styles.buttonHover.background ?? "";
-            },
-            onMouseLeave: (e) => {
-              e.currentTarget.style.background = "transparent";
-            },
             onClick: () => bridge.minimize(),
             children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MinimizeIcon, {})
           }
@@ -277,14 +270,9 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
           {
             type: "button",
             style: styles.button,
+            "data-dsh-wc-button": true,
             "aria-label": maximized ? "Restore" : "Maximize",
             title: maximized ? "Restore" : "Maximize",
-            onMouseEnter: (e) => {
-              e.currentTarget.style.background = styles.buttonHover.background ?? "";
-            },
-            onMouseLeave: (e) => {
-              e.currentTarget.style.background = "transparent";
-            },
             onClick: onToggleMaximize,
             children: maximized ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(RestoreIcon, {}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MaximizeIcon, {})
           }
@@ -294,16 +282,10 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
           {
             type: "button",
             style: styles.button,
+            "data-dsh-wc-button": true,
+            "data-close": true,
             "aria-label": "Close",
             title: "Close",
-            onMouseEnter: (e) => {
-              e.currentTarget.style.background = styles.closeHover.background ?? "";
-              e.currentTarget.style.color = styles.closeHover.color ?? "";
-            },
-            onMouseLeave: (e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--dsw-alias-label-primary)";
-            },
             onClick: () => bridge.close(),
             children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
               "path",
@@ -325,16 +307,28 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
   var WINDOW_CONTROLS_ID = "dsh-desktop-window-controls";
   var TITLE_BAR_CSS_ID = "dsh-desktop-title-bar";
   var titleBarCss = `
-div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"][class*="headerHidden"]) {
-  padding-top: ${TITLE_BAR_HEIGHT}px;
-  height: calc(100% - ${TITLE_BAR_HEIGHT}px);
-}
-div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"]:not([class*="headerHidden"])) {
+div:has(> [data-shell-overlay]) > [class*="centerCol"] {
   padding-top: 0px;
   height: 100%;
 }
 div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
   margin-right: ${TITLE_BAR_HEIGHT + 70}px;
+}
+[data-dsh-window-controls] {
+  background: transparent;
+}
+[data-dsh-window-controls] [data-dsh-wc-button] {
+  background: transparent;
+  opacity: 0.85;
+}
+[data-dsh-window-controls] [data-dsh-wc-button]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  opacity: 1;
+}
+[data-dsh-window-controls] [data-dsh-wc-button][data-close]:hover {
+  background: var(--dsw-alias-bg-danger, #e81123);
+  color: #ffffff;
+  opacity: 1;
 }
 `;
   function ensureTitleBarCss() {

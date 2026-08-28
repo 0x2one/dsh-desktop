@@ -27,6 +27,12 @@ export const IPC = {
  * @returns a disposer removing the handlers and the maximize-state listeners.
  */
 export function registerWindowControls(window: BrowserWindow): () => void {
+  // Capture the webContents while the window is alive. Accessing
+  // `window.webContents` after the window has been destroyed throws
+  // "Object has been destroyed", which is exactly what happens when the
+  // `closed` event fires (it is emitted after the webContents is gone).
+  const webContents = window.webContents
+
   const handleMinimize = (): void => {
     if (!window.isDestroyed() && window.isMinimizable()) window.minimize()
   }
@@ -57,10 +63,12 @@ export function registerWindowControls(window: BrowserWindow): () => void {
   ipcMain.on(IPC.close, handleClose)
 
   const onMaximize = (): void => {
-    if (!window.isDestroyed()) window.webContents.send(IPC.maximizedChanged, true)
+    if (!window.isDestroyed() && !webContents.isDestroyed())
+      webContents.send(IPC.maximizedChanged, true)
   }
   const onUnmaximize = (): void => {
-    if (!window.isDestroyed()) window.webContents.send(IPC.maximizedChanged, false)
+    if (!window.isDestroyed() && !webContents.isDestroyed())
+      webContents.send(IPC.maximizedChanged, false)
   }
 
   window.on('maximize', onMaximize)
@@ -92,11 +100,15 @@ export function registerWindowControls(window: BrowserWindow): () => void {
  * @returns a disposer removing the listener.
  */
 function registerContextMenu(window: BrowserWindow): () => void {
+  // Captured while the window is alive: the `closed` event (which runs the
+  // disposer) is emitted after the webContents is already destroyed, so
+  // touching `window.webContents` at that point would throw.
+  const webContents = window.webContents
   const onContextMenu = (
     _event: Electron.Event,
     params: Electron.ContextMenuParams,
   ): void => {
-    if (window.isDestroyed()) return
+    if (window.isDestroyed() || webContents.isDestroyed()) return
 
     const { editFlags, selectionText, isEditable, linkURL } = params
     const isEditableTarget = isEditable || editFlags.canEditRichly
@@ -136,7 +148,6 @@ function registerContextMenu(window: BrowserWindow): () => void {
     if (template.length > 0) template.push({ type: 'separator' })
 
     // Navigation / view block (always present).
-    const webContents = window.webContents
     template.push(
       {
         label: '后退',
@@ -163,8 +174,8 @@ function registerContextMenu(window: BrowserWindow): () => void {
     }
   }
 
-  window.webContents.on('context-menu', onContextMenu)
+  webContents.on('context-menu', onContextMenu)
   return () => {
-    window.webContents.removeListener('context-menu', onContextMenu)
+    if (!webContents.isDestroyed()) webContents.removeListener('context-menu', onContextMenu)
   }
 }
