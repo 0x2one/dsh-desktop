@@ -7,6 +7,7 @@ import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
 import { ensurePluginsInstalled, waitForPluginInGraph } from './plugin-install'
 import { prepareAppProfile, appProfileDir } from './profile-setup'
+import { ensureMarketInstalled } from './plugin-market'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -84,39 +85,78 @@ if (!gotTheLock) {
     // Show something immediately while the service starts.
     void loadLocalRenderer()
 
+    // Market install outcome, set by the startup task below; the window shows
+    // the loading page during a first-run install, and the harness boot waits
+    // for the install to finish.
+    let marketError: string | undefined
+
     void (async () => {
       // The app profile must exist before the harness can boot on it.
       if (!profileReady) {
-        void loadLocalRenderer('The dsh-desktop profile could not be initialized. See the error dialog for details.')
+        void loadLocalRenderer(
+          'The dsh-desktop profile could not be initialized. See the error dialog for details.'
+        )
         return
       }
-      if (dshService === null) dshService = new DshService({
-        onReady: (url) => {
-          // Inject the window-controls plugin into the harness profile, then
-          // wait for the harness's live patch reload to fold the plugin into
-          // the browser boot graph before loading the window — the first paint
-          // then already shows the window controls. On timeout (or when the
-          // injection is skipped because the plugin is already installed) the
-          // window still loads; the plugin appears after the next reload.
-          void (async () => {
-            try {
-              const injected = ensurePluginsInstalled()
-              if (injected) await waitForPluginInGraph(url)
-            } catch (error) {
-              console.error('[dsh-desktop] plugin injection failed:', error)
-            }
-            if (!window.isDestroyed()) void window.loadURL(url)
-          })()
-        },
-        onUnexpectedExit: (code, signal) => {
-          if (quitRequested || window.isDestroyed()) return
-          void loadLocalRenderer(`dsh web exited unexpectedly (code ${String(code)}, signal ${String(signal)})`)
-        },
-        onStartFailure: (message) => {
-          if (quitRequested || window.isDestroyed()) return
-          void loadLocalRenderer(message)
-        }
-      })
+
+      // ---- dshmarket bootstrap ----
+      // The harness boots on the app's dedicated `dsh-desktop` profile, so the
+      // plugin market only appears in the desktop UI when it is installed into
+      // that profile. Check for it on every launch and, when missing, install
+      // it through the harness's own plugin manager
+      // (`dsh plugin --profile dsh-desktop add dshmarket`) before the service
+      // starts. The install blocks startup (first run can take minutes while
+      // pnpm fetches the registry) so the market is present on this launch; a
+      // failure is reported but does not block the app — the market simply
+      // stays absent until the next launch.
+      try {
+        const market = await ensureMarketInstalled()
+        if (!market.installed && market.error !== undefined) marketError = market.error
+      } catch (error) {
+        marketError = error instanceof Error ? error.message : String(error)
+        console.error('[dsh-desktop] dshmarket bootstrap failed:', error)
+      }
+
+      if (marketError !== undefined) {
+        void dialog.showMessageBox({
+          type: 'warning',
+          title: 'Plugin market unavailable',
+          message: 'dshmarket could not be installed on first launch',
+          detail: `The plugin market was not found in the dsh-desktop profile and the automatic install failed.\n\n${marketError}\n\nIt will be retried on the next launch.`,
+          buttons: ['OK']
+        })
+      }
+
+      if (dshService === null)
+        dshService = new DshService({
+          onReady: (url) => {
+            // Inject the window-controls plugin into the harness profile, then
+            // wait for the harness's live patch reload to fold the plugin into
+            // the browser boot graph before loading the window — the first paint
+            // then already shows the window controls. On timeout (or when the
+            // injection is skipped because the plugin is already installed) the
+            // window still loads; the plugin appears after the next reload.
+            void (async () => {
+              try {
+                const injected = ensurePluginsInstalled()
+                if (injected) await waitForPluginInGraph(url)
+              } catch (error) {
+                console.error('[dsh-desktop] plugin injection failed:', error)
+              }
+              if (!window.isDestroyed()) void window.loadURL(url)
+            })()
+          },
+          onUnexpectedExit: (code, signal) => {
+            if (quitRequested || window.isDestroyed()) return
+            void loadLocalRenderer(
+              `dsh web exited unexpectedly (code ${String(code)}, signal ${String(signal)})`
+            )
+          },
+          onStartFailure: (message) => {
+            if (quitRequested || window.isDestroyed()) return
+            void loadLocalRenderer(message)
+          }
+        })
       try {
         await dshService.start()
       } catch (error) {
@@ -151,7 +191,7 @@ if (!gotTheLock) {
         title: 'Missing runtime requirements',
         message: 'dsh-desktop could not start the DeepSeek Harness service',
         detail,
-        buttons: ['OK'],
+        buttons: ['OK']
       })
     }
 
@@ -178,7 +218,7 @@ if (!gotTheLock) {
         title: 'Profile initialization failed',
         message: 'Could not initialize the dsh-desktop profile',
         detail: `Expected profile: ${appProfileDir()}\n\n${profileError ?? ''}`,
-        buttons: ['OK'],
+        buttons: ['OK']
       })
     }
 

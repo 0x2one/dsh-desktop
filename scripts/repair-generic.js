@@ -130,10 +130,21 @@ console.log(`first problem at line ${first}`);
 const closerLineNos = [];
 // The first problem line is the resumed tail's first line (0-based: first-1).
 // Walk back from the line BEFORE it (0-based: first-2) collecting contiguous
-// synthetic closers.
+// synthetic closers. Closers may include tool/result (an interrupted tool's
+// synthetic result), step/end, turn/end, session/end-seed. Their seq values
+// collide with the resumed tail, so we only collect lines whose seq is
+// >= the resumed tail's first seq (i.e. part of the colliding range).
+const tailFirstSeqMatch = full.problems[0].msg.match(/got (\d+)/);
+const tailFirstSeq = tailFirstSeqMatch ? Number(tailFirstSeqMatch[1]) : null;
+console.log(`resumed tail first seq: ${tailFirstSeq}`);
+const closerTypes = new Set(["tool/result", "step/end", "turn/end", "session/end-seed"]);
 for (let j = first - 2; j >= 1; j--) {
-	const v = JSON.parse(lines[j]);
-	if (["step/end", "turn/end", "session/end-seed"].includes(v.type)) {
+	let v;
+	try { v = JSON.parse(lines[j]); } catch { break; }
+	const d = v.data || {};
+	const isCloserType = closerTypes.has(v.type);
+	const seqInCollision = typeof v.seq === "number" && tailFirstSeq !== null && v.seq >= tailFirstSeq;
+	if (isCloserType && seqInCollision) {
 		closerLineNos.unshift(j); // 0-based
 	} else break;
 }

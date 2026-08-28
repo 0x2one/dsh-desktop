@@ -10,13 +10,15 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 │  ├─ requirements.ts   检查 Node.js / pnpm         │
 │  ├─ dsh-service.ts    spawn npx @deepseek-ai/dsh  │
 │  │                    web --no-open --port 0      │
+│  ├─ plugin-market.ts  启动时检查 dshmarket，缺失则  │
+│  │                    dsh plugin add（阻塞装完）   │
 │  ├─ plugin-install.ts 把窗口操作栏 cordis 插件      │
-│  │                    注入 ~/.dsh/profiles/web     │
+│  │                    注入 ~/.dsh/profiles/dsh-desktop │
 │  ├─ window-controls.ts IPC：最小化/最大化/关闭      │
 │  └─ index.ts          组装以上模块                 │
 ├─────────────────────────────────────────────────┤
 │ dsh web（独立 Node 子进程）                        │
-│  └─ @deepseek-ai/dsh@0.1.1-rc.2 --profile web     │
+│  └─ @deepseek-ai/dsh@0.1.1-rc.2 --profile dsh-desktop │
 │     ├─ 浏览器前端（vite 产物，__DSH_BOOT__ 注入）   │
 │     └─ @dsh-desktop/window-controls（cordis 插件） │
 │        浏览器端注册到 shell.overlay slot → 内容栏   │
@@ -37,6 +39,7 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 | 4. profiles 默认路径 + 专属 app profile + 共享本地环境 | **专属 profile `~/.dsh/profiles/dsh-desktop`**（`src/main/profile-setup.ts` 程序化创建，不跑 pnpm）；与用户 `web` profile 隔离，通过 `profiles/node_modules` 共享层复用 dsh 已安装依赖（同一套环境）；插件构建产物、注入器、验证脚本都在本仓库 |
 | 5. 隐藏原生操作栏 + 右上角自定义操作栏 | `frame: false` + cordis 插件渲染到 `shell.overlay`（右上角），经 IPC 驱动窗口 |
 | 6. 最大化兼容、不改源码 | 插件通过 `dsh.client` 声明被发现，patch 层 `cordis.patch.yml` 注入 entry |
+| 7. 启动时检查并安装 dshmarket | `src/main/plugin-market.ts`：检测 app profile 是否已声明/可解析 `dshmarket`，缺失则阻塞执行 `dsh plugin --profile dsh-desktop add dshmarket`（harness 自带 pnpm 转发 + bundle 层 reconcile），首次运行可能耗时数分钟；失败弹窗提示但不阻塞启动 |
 
 ## 目录结构
 
@@ -86,11 +89,18 @@ scripts/
 
 ### 插件注入（不碰 dsh 源码）
 1. 构建插件 → `plugins/dsh-desktop-window-controls/lib/`（esbuild）。
-2. 复制到 `~/.dsh/profiles/web/node_modules/@dsh-desktop/window-controls/`（profile 的 hoisted 扁平 node_modules 可被 Loader 按裸名解析）。
-3. 在 `~/.dsh/profiles/web/cordis.patch.yml` 幂等追加 `- insert:` 块。
+2. 复制到 `~/.dsh/profiles/dsh-desktop/node_modules/@dsh-desktop/window-controls/`（profile 的 hoisted 扁平 node_modules 可被 Loader 按裸名解析）。
+3. 在 `~/.dsh/profiles/dsh-desktop/cordis.patch.yml` 幂等追加 `- insert:` 块。
    - 模板文件结尾的 `[]` 必须替换（`[]` 是完整 YAML 文档，后面不能再跟行）。
    - 已有用户内容（MCP 配置等）保留。
 4. `waitForPluginInGraph` 轮询服务页面直到 `__DSH_BOOT__` 含插件 id（live patch reload 自动重扫），窗口首屏即带操作栏。
+
+### dshmarket 插件市场自动安装
+- 应用跑在专属 `dsh-desktop` profile，市场插件只有装进该 profile 才会出现在桌面 UI 中——**不碰用户 `web` profile**（用户自己的 `web` profile 里若已装 dshmarket 也与本应用无关）。
+- `plugin-market.ts` 的 `isMarketInstalled` 检查 profile 的 `package.json`（`dsh.profile.bundles` 或 `dependencies` 含 `dshmarket`）**且** `node_modules/dshmarket/package.json` 可解析；两者都满足才视为已安装（避免 manifest 残留/中断安装误判）。
+- 缺失时阻塞执行 `dsh plugin --profile dsh-desktop add dshmarket`（Windows 下经 `dsh.cmd` + shell spawn），该命令由 harness 自带：初始化 profile → 转发 `pnpm add` → 按已安装状态 reconcile `dsh.profile.bundles` 层。
+- 首次安装需联网拉 registry，可能耗时数分钟（超时 5 分钟）；安装期间窗口显示本地加载页，装完才开始 `dsh web`，本次启动即可用市场。失败弹窗提示、不阻塞启动，下次启动自动重试。
+- `installMarket` 只在 `exit code === 0` 时成功；stdout/stderr 尾部并入错误信息便于排查。
 
 ### 浏览器端插件格式（关键契约）
 - `package.json` 声明 `dsh.client: { platform: "web" }` + `exports["./client"]`。
