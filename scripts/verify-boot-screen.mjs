@@ -96,19 +96,20 @@ checks.titleVisible = await page.locator('h1.boot-title').isVisible()
 
 checks.statusLine = await page.locator('.boot-line').first().isVisible()
 const statusText = await page.locator('.boot-line').first().textContent()
-checks.statusCopy = (statusText ?? '').includes('Starting the runtime')
+checks.statusCopy = (statusText ?? '').includes('Starting The Runtime')
 
 const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
 checks.lightPaper = bodyBg === 'rgb(249, 250, 251)'
 
 checks.booting = (await page.locator('.boot').getAttribute('data-state')) === 'booting'
 
-const versionsCount = await page.locator('.versions li').count()
-checks.versions = versionsCount === 0
+const hint = await page.locator('.boot-hint').textContent()
+checks.hint = (hint ?? '').includes('workspace')
+checks.noVersions = (await page.locator('.versions').count()) === 0
 
 console.log(JSON.stringify({ bodyBg, checks, creatureBox, stackBox }, null, 2))
 
-const pass = Object.entries(checks).every(([k, v]) => k === 'versions' || v === true)
+const pass = Object.entries(checks).every(([, v]) => v === true)
 console.log(pass ? 'PASS: boot screen structure verified' : 'FAIL: boot screen structure broken')
 process.exitCode = pass ? 0 : 1
 await browser.close()

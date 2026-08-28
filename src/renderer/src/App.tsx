@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import Logo from './components/Logo'
-import Versions from './components/Versions'
 
 /**
  * Fallback renderer page — also the startup (boot) screen.
@@ -35,22 +34,26 @@ function App(): React.JSX.Element {
         <section className="boot-status" aria-live="polite">
           {failed ? (
             <div className="boot-error">
-              <p className="boot-line boot-line-error">Could not start</p>
+              <p className="boot-line boot-line-error">Could Not Start</p>
               <pre className="boot-detail">{initError}</pre>
               <p className="boot-sub">
-                Install Node.js 22.19+ (or 24) and pnpm, then open the app again.
+                Install Node.js 22.19+ (Or 24) And Pnpm, Then Open The App Again.
               </p>
             </div>
           ) : (
             <>
-              <p className="boot-line">Starting the runtime</p>
-              <p className="boot-sub">profile · Node · pnpm</p>
+              <p className="boot-line">Starting The Runtime</p>
+              <p className="boot-sub">Profile · Node · Pnpm</p>
             </>
           )}
         </section>
       </div>
 
-      <Versions />
+      <p className="boot-hint">
+        {failed
+          ? 'Fix the issue above, then open the app again.'
+          : 'Keep this window open. The workspace opens here.'}
+      </p>
     </div>
   )
 }
