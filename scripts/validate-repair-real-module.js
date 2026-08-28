@@ -14,9 +14,10 @@ const mod = require("D:/develop/env/nodejs/node_global/node_modules/@deepseek-ai
 const { JsonlSessionPersistence } = mod;
 
 const repairedFile = process.argv[2];
-const scratchRoot = process.argv[3] || join(process.cwd(), ".scratch-session-root");
+const sessionId = process.argv[3] || "session-c924b61e-bfa2-402e-b468-d410a3413132";
+const scratchRoot = process.argv[4] || join(process.cwd(), ".scratch-session-root");
 const projectDir = join(scratchRoot, "--D-develop-github-dsh-desktop--");
-const sessionDir = join(projectDir, "session-c924b61e-bfa2-402e-b468-d410a3413132");
+const sessionDir = join(projectDir, sessionId);
 
 rmSync(scratchRoot, { recursive: true, force: true });
 mkdirSync(sessionDir, { recursive: true });
@@ -37,7 +38,7 @@ const persistence = new JsonlSessionPersistence(ctx, {
 });
 console.log("persistence created:", persistence.name);
 
-const id = "session-c924b61e-bfa2-402e-b468-d410a3413132";
+const id = sessionId;
 
 // 1) loadStored -> readPrefix (this is the path that threw before)
 try {

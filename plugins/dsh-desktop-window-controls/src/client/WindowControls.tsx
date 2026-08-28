@@ -42,6 +42,16 @@ interface AnchorRect {
   width: number
 }
 
+/**
+ * Drag-strip geometry. The strip covers the center column's title band, but
+ * when a conversation header is visible it narrows to the session-title area
+ * (the non-interactive crumbs) so mode/Session log controls stay clickable.
+ */
+interface DragRect {
+  left: number
+  width: number
+}
+
 /** Inline style declarations for the drag strip, control row and buttons. */
 const styles = {
   /**
@@ -154,6 +164,27 @@ function findCenterColumn(): HTMLElement | null {
 }
 
 /**
+ * The conversation header inside the center column (`wSkVaW_header` in the
+ * conversation package; hidden in the hero state via a `headerHidden` class).
+ * @returns the header element when a conversation is open, else null.
+ */
+function findConversationHeader(center: HTMLElement): HTMLElement | null {
+  const header = center.querySelector<HTMLElement>('[class*="_header"]')
+  if (header === null || header.className.includes('headerHidden')) return null
+  return header
+}
+
+/**
+ * The session-title area inside the conversation header — the non-interactive
+ * crumbs that lead the title row. Its right edge bounds the drag strip when a
+ * conversation is open, so the mode switch and Session log buttons (which sit
+ * to its right) stay clickable.
+ */
+function findTitleArea(header: HTMLElement): HTMLElement | null {
+  return header.querySelector<HTMLElement>('[class*="_crumbs"]')
+}
+
+/**
  * The window control row and drag strip, anchored to the center column.
  * Rendered inside the frame-wide shell.overlay layer; the layer is
  * click-through except for entries, and our roots opt into pointer events via
@@ -165,6 +196,9 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
   // Viewport geometry of the center column; drives the fixed positioning of
   // the drag strip and the control row. null until the first observation.
   const [anchor, setAnchor] = useState<AnchorRect | null>(null)
+  // Drag-strip geometry (may be narrower than the column when a conversation
+  // header is open, to keep its utility buttons clickable).
+  const [drag, setDrag] = useState<DragRect | null>(null)
 
   useEffect(() => {
     const bridge = window.api?.windowControls
@@ -183,6 +217,21 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
     const measure = (): void => {
       const r = target.getBoundingClientRect()
       setAnchor({ left: r.left, top: r.top, width: r.width })
+      const header = findConversationHeader(target)
+      if (header === null) {
+        // Hero state: the strip covers the full title band of the column.
+        setDrag({ left: r.left, width: r.width })
+        return
+      }
+      const titleArea = findTitleArea(header)
+      if (titleArea === null) {
+        // Header visible but no title area located: fall back to a safe
+        // margin (keep the right part clear of the control row).
+        setDrag({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) })
+        return
+      }
+      const t = titleArea.getBoundingClientRect()
+      setDrag({ left: r.left, width: Math.max(0, t.right - r.left) })
     }
     measure()
     // Track the column geometry (window resize, sidebar/details drag, collapse).
@@ -191,9 +240,15 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
     // Also observe the frame: a window resize changes the grid, which may
     // resize the column even when its own box doesn't report a change.
     observer.observe(frame)
+    // The header appears/disappears when a conversation opens/closes, and its
+    // internal geometry changes with the title; a MutationObserver catches
+    // those transitions that ResizeObserver may miss.
+    const mutation = new MutationObserver(measure)
+    mutation.observe(target, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] })
     window.addEventListener('resize', measure)
     return () => {
       observer.disconnect()
+      mutation.disconnect()
       window.removeEventListener('resize', measure)
     }
   }, [])
@@ -211,8 +266,8 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
 
   const dragStripStyle: React.CSSProperties = {
     ...styles.dragStrip,
-    left: anchor !== null ? `${anchor.left}px` : '0px',
-    width: anchor !== null ? `${anchor.width}px` : '100%',
+    left: drag !== null ? `${drag.left}px` : '0px',
+    width: drag !== null ? `${drag.width}px` : '100%',
   }
   const rootStyle: React.CSSProperties = {
     ...styles.root,

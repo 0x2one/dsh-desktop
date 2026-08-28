@@ -104,8 +104,18 @@ scripts/
 - IPC：`window:minimize`（send）、`window:toggle-maximize` / `window:is-maximized`（invoke）、`window:close`（send）、`window:maximized-changed`（主进程广播）。
 - 浏览器插件组件用 dsh 主题 CSS 变量（`var(--dsw-alias-*)`）适配明暗主题。
 - **窗口拖动**：无边框窗口没有原生标题栏，插件在**中间内容栏（会话区）顶部 40px 条带**注入 `-webkit-app-region: drag` 拖拽条（`data-dsh-drag-strip`），按下该条带即可移动窗口；操作栏保持 `no-drag`，按钮点击不受影响。
-- **布局占位**：插件注入样式表（`data-dsh-css="dsh-desktop-title-bar"`），只给**中间内容栏**加 `padding-top: 40px; height: calc(100% - 40px)`（选择器 `div:has(> [data-shell-overlay]) > [class*="centerCol"]`），会话内容从 40px 开始；**左侧栏不受影响，顶到窗口最顶端**。操作栏与拖拽条通过 ResizeObserver 锚定内容栏几何位置，窗口缩放、侧栏折叠/展开、面板拖动时跟随移动。
+- **布局占位**：插件注入样式表（`data-dsh-css="dsh-desktop-title-bar"`），按会话状态自适应（`:has()` 判断 header 是否隐藏）：
+  - **hero（未打开会话）**：中间内容栏 `padding-top: 40px; height: calc(100% - 40px)`（`centerCol:has(header[headerHidden])`），内容从 40px 开始，为操作栏让位；**左侧栏不受影响、顶到窗口最顶端**；
+  - **active（打开会话）**：内容栏无顶部 padding（`centerCol:has(header 无 headerHidden)`），会话标题栏从窗口最顶端开始，标题、模式、Session log 与操作栏**同一行**；只给标题行（`[class*="titleRow"]`）加 `margin-right: 132px` 为右侧操作栏让位（Session log 与操作栏保持 22px 间隙），**tabs 行保持全宽**（header 不再整体加右边距）。
+  - 注意：header 用「去掉 padding 自然上移」而非 `margin-top: -40px`——负 margin 上移会让 Chromium 命中测试失效（内容视觉在 y=0 但点击区域仍在下移处），导致操作栏看似盖住标题区内容。
+- **拖拽条范围自适应**：hero（未打开会话）时拖拽条覆盖内容栏整个顶部 40px；打开会话后收窄到会话标题区（crumbs，不可交互），模式/Session log 按钮保持可点击。操作栏与拖拽条通过 ResizeObserver/MutationObserver 锚定内容栏与标题栏几何，窗口缩放、侧栏折叠/展开、面板拖动时跟随移动。
 - **本地兜底页**（启动中/出错时）：`src/renderer/src/assets/main.css` 给 `body` 设置 `-webkit-app-region: drag`，该页面无交互控件，整页可拖动。
+- **右键菜单**：Electron 默认不提供原生右键菜单，主进程 `registerContextMenu`（`src/main/window-controls.ts`）监听 `webContents` 的 `context-menu` 事件并按点击上下文动态构建菜单：
+  - 可编辑区域（输入框/composer）：撤销/重做/剪切/复制/粘贴/全选（按 `editFlags` 启用/禁用）；
+  - 选中文本（非编辑区）：复制/全选；
+  - 链接：在浏览器中打开 / 复制链接地址；
+  - 底部固定导航块：后退/前进（按 `navigationHistory` 启用）/ 重新加载 / 检查元素。
+  - 调试：设置 `DSH_DESKTOP_DEBUG_MENU=1` 会在每次菜单弹出时向 stdout 打印菜单项数与上下文。
 
 ## 验证
 

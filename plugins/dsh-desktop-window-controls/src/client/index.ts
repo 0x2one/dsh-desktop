@@ -9,10 +9,12 @@
  * The controls are anchored to the **center (conversation) column**: they sit
  * at its top-right corner, and the drag strip covers its 40px title band. The
  * sidebar is not offset, so it reaches the very top of the window. Besides
- * the overlay entries, this module injects a small stylesheet that gives the
- * center column a `TITLE_BAR_HEIGHT` top padding (see `titleBarCss`) so the
- * conversation content starts below the band and nothing interactive sits
- * underneath the controls.
+ * the overlay entries, this module injects a small stylesheet that adapts the
+ * top band by conversation state (see `titleBarCss`): in the hero state the
+ * center column keeps a `TITLE_BAR_HEIGHT` top padding for the controls,
+ * while with a conversation open the header starts at the very top so its
+ * title row (title, mode, Session log) shares the top row with the window
+ * controls.
  *
  * The controls call `window.api.windowControls.*`, exposed by the
  * dsh-desktop preload bridge, which talks to the Electron main process over
@@ -38,32 +40,45 @@ export const WINDOW_CONTROLS_ID = 'dsh-desktop-window-controls'
 const TITLE_BAR_CSS_ID = 'dsh-desktop-title-bar'
 
 /**
- * Reserve the top `TITLE_BAR_HEIGHT` px of the **center column only** for the
- * window controls and drag strip.
+ * Layout adjustments contributed by the window-controls plugin.
  *
  * The harness frame (`@deepseek-ai/dsh-client-ui-layout`'s AppFrame) is a
  * three-column grid (sidebar | center | details). The window controls belong
  * to the top-right corner of the center (conversation) column, and the
  * sidebar must reach the very top of the window, so the offset is applied to
- * the center column alone:
+ * the center column alone. The layout differs by conversation state:
  *
- * - `padding-top: <height>` + `height: calc(100% - <height>)` keeps the
- *   center column's outer box at 100% height while its content starts below
- *   the band. The conversation root (the center column's child) is what the
- *   plugin's overlay entries float over; it moves down intact.
- * - The sidebar column is untouched — it stays pinned to the top of the
- *   window (y = 0).
+ * - **Hero (no open conversation)**: the conversation header is hidden, so
+ *   the center column gets `padding-top: <height>` + `height: calc(100% -
+ *   <height>)` to reserve the top row for the overlay controls.
+ * - **Active (conversation open)**: the center column gets no top padding, so
+ *   the conversation header (`wSkVaW_header` in the conversation package)
+ *   naturally starts at the very top and its title row — session title, mode,
+ *   and the Session log button — shares the top row with the window controls.
+ *   A right margin on the header's **title row only** keeps its trailing
+ *   utility buttons (Session log) clear of the window-control row (which
+ *   floats at the content column's right edge); the tabs row below is left
+ *   untouched so it keeps its full width.
  *
- * The layout package's CSS modules use hashed class names, but the hashed
- * name for the center column contains the stable `centerCol` token
- * (`pI_x6G_centerCol`), so it is selected by attribute: any direct child of
- * the frame whose class contains `centerCol`. `:has()` is supported by the
- * Electron 39 Chromium.
+ * The two states are distinguished with `:has()` on the header's presence and
+ * its `headerHidden` class. The layout package's CSS modules use hashed class
+ * names, but the hashed names contain stable tokens: the center column's
+ * class contains `centerCol`, the conversation header's class contains
+ * `_header`, and the title row's class contains `titleRow`. Rules are scoped
+ * inside the center column so they cannot affect the sidebar or other
+ * surfaces. `:has()` is supported by the Electron 39 Chromium.
  */
 const titleBarCss = `
-div:has(> [data-shell-overlay]) > [class*="centerCol"] {
+div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"][class*="headerHidden"]) {
   padding-top: ${TITLE_BAR_HEIGHT}px;
   height: calc(100% - ${TITLE_BAR_HEIGHT}px);
+}
+div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"]:not([class*="headerHidden"])) {
+  padding-top: 0px;
+  height: 100%;
+}
+div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+  margin-right: ${TITLE_BAR_HEIGHT + 70}px;
 }
 `
 

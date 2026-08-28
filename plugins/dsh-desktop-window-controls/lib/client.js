@@ -154,9 +154,18 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
     }
     return frame;
   }
+  function findConversationHeader(center) {
+    const header = center.querySelector('[class*="_header"]');
+    if (header === null || header.className.includes("headerHidden")) return null;
+    return header;
+  }
+  function findTitleArea(header) {
+    return header.querySelector('[class*="_crumbs"]');
+  }
   function WindowControls(_props) {
     const [maximized, setMaximized] = (0, import_react.useState)(false);
     const [anchor, setAnchor] = (0, import_react.useState)(null);
+    const [drag, setDrag] = (0, import_react.useState)(null);
     (0, import_react.useEffect)(() => {
       const bridge2 = window.api?.windowControls;
       if (bridge2 === void 0) return;
@@ -172,14 +181,29 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       const measure = () => {
         const r = target.getBoundingClientRect();
         setAnchor({ left: r.left, top: r.top, width: r.width });
+        const header = findConversationHeader(target);
+        if (header === null) {
+          setDrag({ left: r.left, width: r.width });
+          return;
+        }
+        const titleArea = findTitleArea(header);
+        if (titleArea === null) {
+          setDrag({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) });
+          return;
+        }
+        const t = titleArea.getBoundingClientRect();
+        setDrag({ left: r.left, width: Math.max(0, t.right - r.left) });
       };
       measure();
       const observer = new ResizeObserver(measure);
       observer.observe(target);
       observer.observe(frame);
+      const mutation = new MutationObserver(measure);
+      mutation.observe(target, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
       window.addEventListener("resize", measure);
       return () => {
         observer.disconnect();
+        mutation.disconnect();
         window.removeEventListener("resize", measure);
       };
     }, []);
@@ -192,8 +216,8 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
     };
     const dragStripStyle = {
       ...styles.dragStrip,
-      left: anchor !== null ? `${anchor.left}px` : "0px",
-      width: anchor !== null ? `${anchor.width}px` : "100%"
+      left: drag !== null ? `${drag.left}px` : "0px",
+      width: drag !== null ? `${drag.width}px` : "100%"
     };
     const rootStyle = {
       ...styles.root,
@@ -273,9 +297,16 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
   var WINDOW_CONTROLS_ID = "dsh-desktop-window-controls";
   var TITLE_BAR_CSS_ID = "dsh-desktop-title-bar";
   var titleBarCss = `
-div:has(> [data-shell-overlay]) > [class*="centerCol"] {
+div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"][class*="headerHidden"]) {
   padding-top: ${TITLE_BAR_HEIGHT}px;
   height: calc(100% - ${TITLE_BAR_HEIGHT}px);
+}
+div:has(> [data-shell-overlay]) > [class*="centerCol"]:has([class*="_header"]:not([class*="headerHidden"])) {
+  padding-top: 0px;
+  height: 100%;
+}
+div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+  margin-right: ${TITLE_BAR_HEIGHT + 70}px;
 }
 `;
   function ensureTitleBarCss() {
