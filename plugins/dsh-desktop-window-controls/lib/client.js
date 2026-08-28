@@ -90,34 +90,91 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       // win over the external :hover rule).
     },
     icon: {
-      width: "15px",
-      height: "15px",
+      width: "16px",
+      height: "16px",
       display: "block"
     }
   };
-  var glyphStroke = {
-    stroke: "currentColor",
-    strokeWidth: 1.4,
-    strokeLinecap: "round",
-    strokeLinejoin: "round"
-  };
   function Glyph({ children }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 12 12", style: styles.icon, "aria-hidden": "true", fill: "none", children });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "svg",
+      {
+        viewBox: "0 0 16 16",
+        width: 16,
+        height: 16,
+        style: styles.icon,
+        "aria-hidden": "true",
+        fill: "none",
+        children
+      }
+    );
+  }
+  function PaneRing({
+    x,
+    y,
+    size,
+    radius
+  }) {
+    const stroke = 1.3;
+    const inner = radius - stroke;
+    const x2 = x + size;
+    const y2 = y + size;
+    const outerStart = x + radius;
+    const innerStart = x + stroke + Math.max(inner, 0);
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "path",
+      {
+        fill: "currentColor",
+        fillRule: "evenodd",
+        clipRule: "evenodd",
+        d: [
+          `M${outerStart} ${y} H${x2 - radius} A${radius} ${radius} 0 0 1 ${x2} ${y + radius}`,
+          `V${y2 - radius} A${radius} ${radius} 0 0 1 ${x2 - radius} ${y2}`,
+          `H${x + radius} A${radius} ${radius} 0 0 1 ${x} ${y2 - radius}`,
+          `V${y + radius} A${radius} ${radius} 0 0 1 ${outerStart} ${y} Z`,
+          `M${innerStart} ${y + stroke} H${x2 - stroke - Math.max(inner, 0)} A${Math.max(inner, 0)} ${Math.max(inner, 0)} 0 0 1 ${x2 - stroke} ${y + stroke + Math.max(inner, 0)}`,
+          `V${y2 - stroke - Math.max(inner, 0)} A${Math.max(inner, 0)} ${Math.max(inner, 0)} 0 0 1 ${x2 - stroke - Math.max(inner, 0)} ${y2 - stroke}`,
+          `H${x + stroke + Math.max(inner, 0)} A${Math.max(inner, 0)} ${Math.max(inner, 0)} 0 0 1 ${x + stroke} ${y2 - stroke - Math.max(inner, 0)}`,
+          `V${y + stroke + Math.max(inner, 0)} A${Math.max(inner, 0)} ${Math.max(inner, 0)} 0 0 1 ${innerStart} ${y + stroke} Z`
+        ].join(" ")
+      }
+    );
   }
   function RestoreIcon() {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Glyph, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M4.25 3.1 H8.1 A1.4 1.4 0 0 1 9.5 4.5 V8.1", ...glyphStroke }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1.7", y: "3.9", width: "6.4", height: "6.4", rx: "1.5", ...glyphStroke })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "path",
+        {
+          fill: "currentColor",
+          d: "M5.85 1.5 H12.4 A2.1 2.1 0 0 1 14.5 3.6 V9.2 H13.2 V3.6 A0.8 0.8 0 0 0 12.4 2.8 H5.85 Z"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PaneRing, { x: 1.5, y: 4.4, size: 10.6, radius: 1.85 })
     ] });
   }
   function MaximizeIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "2", y: "2", width: "8", height: "8", rx: "1.7", ...glyphStroke }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PaneRing, { x: 1.5, y: 1.5, size: 13, radius: 2.1 }) });
   }
   function MinimizeIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M2.2 6 H9.8", ...glyphStroke }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M3 7.35h10v1.3H3z", fill: "currentColor" }) });
   }
   function CloseIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M3 3 L9 9 M9 3 L3 9", ...glyphStroke }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Glyph, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "path",
+        {
+          d: "M14.1168 13.197L13.197 14.1167L1.8833 2.80303L2.80309 1.88324L14.1168 13.197Z",
+          fill: "currentColor"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "path",
+        {
+          d: "M13.197 1.88326L14.1168 2.80305L2.80309 14.1168L1.8833 13.197L13.197 1.88326Z",
+          fill: "currentColor"
+        }
+      )
+    ] });
   }
   function findCenterColumn() {
     const frame = document.querySelector("div:has(> [data-shell-overlay])");
