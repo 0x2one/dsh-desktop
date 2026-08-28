@@ -162,10 +162,16 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
   function findTitleArea(header) {
     return header.querySelector('[class*="_crumbs"]');
   }
+  function findModeSwitch(header) {
+    return header.querySelector('[class*="_headerActions"]');
+  }
+  function findUtilities(header) {
+    return header.querySelector('[class*="_headerUtilities"]');
+  }
   function WindowControls(_props) {
     const [maximized, setMaximized] = (0, import_react.useState)(false);
     const [anchor, setAnchor] = (0, import_react.useState)(null);
-    const [drag, setDrag] = (0, import_react.useState)(null);
+    const [drag, setDrag] = (0, import_react.useState)([]);
     (0, import_react.useEffect)(() => {
       const bridge2 = window.api?.windowControls;
       if (bridge2 === void 0) return;
@@ -183,16 +189,31 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
         setAnchor({ left: r.left, top: r.top, width: r.width });
         const header = findConversationHeader(target);
         if (header === null) {
-          setDrag({ left: r.left, width: r.width });
+          setDrag([{ left: r.left, width: r.width }]);
           return;
         }
         const titleArea = findTitleArea(header);
-        if (titleArea === null) {
-          setDrag({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) });
-          return;
+        const mode = findModeSwitch(header);
+        const utils = findUtilities(header);
+        const segments = [];
+        const clamp = (left, right) => {
+          const w = right - left;
+          if (w > 0) segments.push({ left: Math.round(left), width: Math.round(w) });
+        };
+        if (titleArea !== null) {
+          const modeLeft = mode !== null ? mode.getBoundingClientRect().left : void 0;
+          const titleRight = titleArea.getBoundingClientRect().right;
+          clamp(r.left, modeLeft !== void 0 ? modeLeft : titleRight);
         }
-        const t = titleArea.getBoundingClientRect();
-        setDrag({ left: r.left, width: Math.max(0, t.right - r.left) });
+        if (mode !== null && utils !== null) {
+          const modeRight = mode.getBoundingClientRect().right;
+          const utilsLeft = utils.getBoundingClientRect().left;
+          clamp(modeRight, utilsLeft);
+        }
+        if (segments.length === 0) {
+          segments.push({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) });
+        }
+        setDrag(segments);
       };
       measure();
       const observer = new ResizeObserver(measure);
@@ -214,18 +235,25 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
     const onToggleMaximize = () => {
       void bridge.toggleMaximize().then(setMaximized);
     };
-    const dragStripStyle = {
-      ...styles.dragStrip,
-      left: drag !== null ? `${drag.left}px` : "0px",
-      width: drag !== null ? `${drag.width}px` : "100%"
-    };
     const rootStyle = {
       ...styles.root,
       left: anchor !== null ? `${anchor.left + anchor.width - 3 * 46}px` : "auto",
       right: anchor !== null ? "auto" : "0px"
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: dragStripStyle, "aria-hidden": "true", "data-dsh-drag-strip": true }),
+      drag.map((segment, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "div",
+        {
+          style: {
+            ...styles.dragStrip,
+            left: `${segment.left}px`,
+            width: `${segment.width}px`
+          },
+          "aria-hidden": "true",
+          "data-dsh-drag-strip": true
+        },
+        index
+      )),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: rootStyle, role: "toolbar", "aria-label": "Window controls", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",

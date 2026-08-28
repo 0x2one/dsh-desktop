@@ -43,11 +43,13 @@ interface AnchorRect {
 }
 
 /**
- * Drag-strip geometry. The strip covers the center column's title band, but
- * when a conversation header is visible it narrows to the session-title area
- * (the non-interactive crumbs) so mode/Session log controls stay clickable.
+ * Drag-strip geometry. In the hero state a single strip covers the whole
+ * title band of the column. With a conversation header open the strip is
+ * split into segments that cover only the non-interactive areas of the title
+ * row (the session-title crumbs and the blank flex space after the mode
+ * switch), so the mode switch and Session log buttons stay clickable.
  */
-interface DragRect {
+type DragRect = {
   left: number
   width: number
 }
@@ -176,12 +178,28 @@ function findConversationHeader(center: HTMLElement): HTMLElement | null {
 
 /**
  * The session-title area inside the conversation header — the non-interactive
- * crumbs that lead the title row. Its right edge bounds the drag strip when a
- * conversation is open, so the mode switch and Session log buttons (which sit
- * to its right) stay clickable.
+ * crumbs that lead the title row. Its right edge bounds the first drag
+ * segment when a conversation is open.
  */
 function findTitleArea(header: HTMLElement): HTMLElement | null {
   return header.querySelector<HTMLElement>('[class*="_crumbs"]')
+}
+
+/**
+ * The mode-switch cluster inside the title row (`headerActions`). The drag
+ * segments skip it so the switch stays clickable.
+ */
+function findModeSwitch(header: HTMLElement): HTMLElement | null {
+  return header.querySelector<HTMLElement>('[class*="_headerActions"]')
+}
+
+/**
+ * The trailing utility cluster inside the title row (`headerUtilities`,
+ * hosting the Session log button). The second drag segment ends at its left
+ * edge so the buttons stay clickable.
+ */
+function findUtilities(header: HTMLElement): HTMLElement | null {
+  return header.querySelector<HTMLElement>('[class*="_headerUtilities"]')
 }
 
 /**
@@ -196,9 +214,9 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
   // Viewport geometry of the center column; drives the fixed positioning of
   // the drag strip and the control row. null until the first observation.
   const [anchor, setAnchor] = useState<AnchorRect | null>(null)
-  // Drag-strip geometry (may be narrower than the column when a conversation
-  // header is open, to keep its utility buttons clickable).
-  const [drag, setDrag] = useState<DragRect | null>(null)
+  // Drag-strip geometry: one or more segments covering the draggable parts of
+  // the title band (see DragRect above).
+  const [drag, setDrag] = useState<DragRect[]>([])
 
   useEffect(() => {
     const bridge = window.api?.windowControls
@@ -219,19 +237,41 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
       setAnchor({ left: r.left, top: r.top, width: r.width })
       const header = findConversationHeader(target)
       if (header === null) {
-        // Hero state: the strip covers the full title band of the column.
-        setDrag({ left: r.left, width: r.width })
+        // Hero state: a single strip covers the full title band of the column.
+        setDrag([{ left: r.left, width: r.width }])
         return
       }
+      // Active state: build drag segments over the non-interactive parts of
+      // the title row (which sits in the top band). Segment 1 spans from the
+      // column's left edge to the mode switch; segment 2 from after the mode
+      // switch to the utilities (Session log). Everything interactive —
+      // mode switch and utilities — stays outside the drag regions.
       const titleArea = findTitleArea(header)
-      if (titleArea === null) {
-        // Header visible but no title area located: fall back to a safe
-        // margin (keep the right part clear of the control row).
-        setDrag({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) })
-        return
+      const mode = findModeSwitch(header)
+      const utils = findUtilities(header)
+      const segments: DragRect[] = []
+      const clamp = (left: number, right: number): void => {
+        const w = right - left
+        if (w > 0) segments.push({ left: Math.round(left), width: Math.round(w) })
       }
-      const t = titleArea.getBoundingClientRect()
-      setDrag({ left: r.left, width: Math.max(0, t.right - r.left) })
+      if (titleArea !== null) {
+        // Segment 1: column left edge → mode switch left edge (or title area
+        // right edge when there is no mode switch).
+        const modeLeft = mode !== null ? mode.getBoundingClientRect().left : undefined
+        const titleRight = titleArea.getBoundingClientRect().right
+        clamp(r.left, modeLeft !== undefined ? modeLeft : titleRight)
+      }
+      if (mode !== null && utils !== null) {
+        // Segment 2: mode switch right edge → utilities left edge.
+        const modeRight = mode.getBoundingClientRect().right
+        const utilsLeft = utils.getBoundingClientRect().left
+        clamp(modeRight, utilsLeft)
+      }
+      if (segments.length === 0) {
+        // Fallback: keep the right part clear of the control row.
+        segments.push({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) })
+      }
+      setDrag(segments)
     }
     measure()
     // Track the column geometry (window resize, sidebar/details drag, collapse).
@@ -264,11 +304,6 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
     void bridge.toggleMaximize().then(setMaximized)
   }
 
-  const dragStripStyle: React.CSSProperties = {
-    ...styles.dragStrip,
-    left: drag !== null ? `${drag.left}px` : '0px',
-    width: drag !== null ? `${drag.width}px` : '100%',
-  }
   const rootStyle: React.CSSProperties = {
     ...styles.root,
     left: anchor !== null ? `${anchor.left + anchor.width - 3 * 46}px` : 'auto',
@@ -277,9 +312,21 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
 
   return (
     <>
-      {/* Drag surface over the center column's title band: dragging moves the
-          window. Rendered first so the control row (z-index 1000) stacks above. */}
-      <div style={dragStripStyle} aria-hidden="true" data-dsh-drag-strip />
+      {/* Drag surfaces over the title band: pressing and dragging any of them
+          moves the window. Rendered first so the control row (z-index 1000)
+          stacks above. */}
+      {drag.map((segment, index) => (
+        <div
+          key={index}
+          style={{
+            ...styles.dragStrip,
+            left: `${segment.left}px`,
+            width: `${segment.width}px`,
+          }}
+          aria-hidden="true"
+          data-dsh-drag-strip
+        />
+      ))}
       <div style={rootStyle} role="toolbar" aria-label="Window controls">
       <button
         type="button"
