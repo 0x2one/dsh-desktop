@@ -4,19 +4,30 @@
  */
 import { chromium } from 'playwright-core'
 import { createServer } from 'node:http'
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const chromePath = join(process.env.LOCALAPPDATA ?? '', 'ms-playwright', 'chromium-1217', 'chrome-win64', 'chrome.exe')
+const chromePath = [
+  join(
+    process.env.LOCALAPPDATA ?? '',
+    'ms-playwright',
+    'chromium-1217',
+    'chrome-win64',
+    'chrome.exe'
+  ),
+  join('C:/Program Files/Google/Chrome/Application/chrome.exe')
+].find(existsSync)
+if (chromePath === undefined) throw new Error('Chrome/Chromium executable not found')
 const rendererDir = join(ROOT, 'out', 'renderer')
 const MIME = {
   '.html': 'text/html',
   '.js': 'text/javascript',
   '.css': 'text/css',
   '.svg': 'image/svg+xml',
-  '.png': 'image/png',
+  '.png': 'image/png'
 }
 
 const server = createServer(async (req, res) => {
@@ -43,7 +54,7 @@ const base = `http://127.0.0.1:${server.address().port}`
 const browser = await chromium.launch({
   executablePath: chromePath,
   headless: true,
-  args: ['--no-sandbox'],
+  args: ['--no-sandbox']
 })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 await page.addInitScript(() => {

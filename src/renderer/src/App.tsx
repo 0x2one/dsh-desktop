@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Logo from './components/Logo'
 import Versions from './components/Versions'
 
 /**
@@ -9,9 +10,10 @@ import Versions from './components/Versions'
  * boot screen) and when it could not start (missing runtimes, spawn failure).
  *
  * Design: a left-anchored terminal-banner composition over a deep-sea
- * bathymetry field — contour lines drawn from the DeepSeek "deep" identity,
- * with a slow sonar pulse at the focus. The boot state is a mono status line;
- * the error state surfaces the main process's message in the same voice.
+ * bathymetry field — the official DeepSeek whale mark, contour lines from the
+ * "deep" identity, and a slow sonar pulse at the focus. The boot state is a
+ * mono status line; the error state surfaces the main process's message in
+ * the same voice.
  */
 function App(): React.JSX.Element {
   const [initError, setInitError] = useState<string | null>(null)
@@ -30,6 +32,7 @@ function App(): React.JSX.Element {
       </div>
 
       <header className="boot-banner">
+        <Logo className="boot-logo" />
         <p className="boot-eyebrow">deepseek · harness · desktop</p>
         <h1 className="boot-title">DeepSeek Harness Desktop</h1>
       </header>

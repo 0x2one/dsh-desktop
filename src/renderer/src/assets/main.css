@@ -65,7 +65,7 @@ body {
      sea-floor survey. Built from layered radial gradients so no image
      asset is needed and the whole page stays a drag region. */
   background:
-    radial-gradient(120% 90% at 78% 18%, rgba(86, 134, 254, 0.10) 0%, transparent 42%),
+    radial-gradient(120% 90% at 78% 18%, rgba(86, 134, 254, 0.1) 0%, transparent 42%),
     radial-gradient(90% 80% at 70% 8%, rgba(65, 118, 230, 0.16) 0%, transparent 40%),
     radial-gradient(70% 90% at 88% 30%, rgba(103, 158, 254, 0.08) 0%, transparent 55%),
     radial-gradient(130% 100% at 22% 108%, rgba(65, 118, 230, 0.12) 0%, transparent 50%),
@@ -80,8 +80,18 @@ body {
   position: absolute;
   inset: 0;
   background-image:
-    repeating-radial-gradient(120% 90% at 78% 18%, transparent 0 3.5%, var(--ds-line) 3.5% 3.6%, transparent 3.6% 6%),
-    repeating-radial-gradient(90% 80% at 70% 8%, transparent 0 5%, var(--ds-line) 5% 5.1%, transparent 5.1% 8.5%);
+    repeating-radial-gradient(
+      120% 90% at 78% 18%,
+      transparent 0 3.5%,
+      var(--ds-line) 3.5% 3.6%,
+      transparent 3.6% 6%
+    ),
+    repeating-radial-gradient(
+      90% 80% at 70% 8%,
+      transparent 0 5%,
+      var(--ds-line) 5% 5.1%,
+      transparent 5.1% 8.5%
+    );
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 90%);
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 90%);
 }
@@ -145,6 +155,20 @@ body {
 .boot-banner {
   position: relative;
   z-index: 1;
+}
+
+.boot-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  color: var(--ds-ink);
+  margin: 0 0 22px;
+}
+
+.boot-logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .boot-eyebrow {

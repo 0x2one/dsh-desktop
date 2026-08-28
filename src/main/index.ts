@@ -47,7 +47,7 @@ if (!gotTheLock) {
       autoHideMenuBar: true,
       frame: false,
       ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden' as const } : {}),
-      ...(process.platform === 'linux' ? { icon } : {}),
+      icon,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         sandbox: false
