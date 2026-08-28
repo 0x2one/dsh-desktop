@@ -110,65 +110,66 @@ const styles = {
     // win over the external :hover rule).
   } as React.CSSProperties,
   icon: {
-    width: '13px',
-    height: '13px',
+    width: '15px',
+    height: '15px',
     display: 'block',
   },
 } as const
 
 /**
- * Window-control glyphs, drawn on a shared 10×10 grid so all three buttons
- * read as one coherent family. Geometry follows the platform convention:
- * minimize is a baseline dash, maximize/restore are overlapping rectangles
- * (solid front + ghost back), close is a centered cross.
+ * Window-control glyphs, one stroke family on a 12×12 grid. Round caps and
+ * joins, 1.4px hairline — the same voice as the harness outline icons, not
+ * the Windows nested-box set. Minimize is a horizon bar, maximize a rounded
+ * pane, restore a front pane with a back-edge, close a centered cross.
  */
+const glyphStroke = {
+  stroke: 'currentColor',
+  strokeWidth: 1.4,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+}
+
 function Glyph({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true" fill="none">
+    <svg viewBox="0 0 12 12" style={styles.icon} aria-hidden="true" fill="none">
       {children}
     </svg>
   )
 }
 
-/** Restore glyph: a small rect overlapping a larger one (backing window). */
+/** Restore: the front pane sits in front of a back-edge (the previous window). */
 function RestoreIcon(): React.JSX.Element {
   return (
     <Glyph>
-      <rect x="1.5" y="3" width="5.5" height="5.5" stroke="currentColor" strokeWidth="1" />
-      <rect x="3" y="1.5" width="5.5" height="5.5" stroke="currentColor" strokeWidth="1" opacity="0.45" />
+      <path d="M4.25 3.1 H8.1 A1.4 1.4 0 0 1 9.5 4.5 V8.1" {...glyphStroke} />
+      <rect x="1.7" y="3.9" width="6.4" height="6.4" rx="1.5" {...glyphStroke} />
     </Glyph>
   )
 }
 
-/** Maximize glyph: a solid front rect over a ghost back rect. */
+/** Maximize: a single rounded pane. */
 function MaximizeIcon(): React.JSX.Element {
   return (
     <Glyph>
-      <rect x="1.5" y="1.5" width="7" height="7" stroke="currentColor" strokeWidth="1" />
-      <rect x="3" y="3" width="5.5" height="5.5" stroke="currentColor" strokeWidth="1" opacity="0.35" />
+      <rect x="2" y="2" width="8" height="8" rx="1.7" {...glyphStroke} />
     </Glyph>
   )
 }
 
-/** Minimize glyph: a short baseline dash centered in the grid. */
+/** Minimize: a horizon bar through the optical center. */
 function MinimizeIcon(): React.JSX.Element {
   return (
     <Glyph>
-      <rect x="1" y="4.5" width="8" height="1.2" fill="currentColor" rx="0.6" />
+      <path d="M2.2 6 H9.8" {...glyphStroke} />
     </Glyph>
   )
 }
 
-/** Close glyph: a centered cross. */
+/** Close: a centered cross, same stroke as the rest of the family. */
 function CloseIcon(): React.JSX.Element {
   return (
     <Glyph>
-      <path
-        d="M2 2 L8 8 M8 2 L2 8"
-        stroke="currentColor"
-        strokeWidth="1"
-        strokeLinecap="round"
-      />
+      <path d="M3 3 L9 9 M9 3 L3 9" {...glyphStroke} />
     </Glyph>
   )
 }

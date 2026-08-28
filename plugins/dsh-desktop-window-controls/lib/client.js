@@ -90,39 +90,34 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       // win over the external :hover rule).
     },
     icon: {
-      width: "13px",
-      height: "13px",
+      width: "15px",
+      height: "15px",
       display: "block"
     }
   };
+  var glyphStroke = {
+    stroke: "currentColor",
+    strokeWidth: 1.4,
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  };
   function Glyph({ children }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", fill: "none", children });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 12 12", style: styles.icon, "aria-hidden": "true", fill: "none", children });
   }
   function RestoreIcon() {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Glyph, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1.5", y: "3", width: "5.5", height: "5.5", stroke: "currentColor", strokeWidth: "1" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3", y: "1.5", width: "5.5", height: "5.5", stroke: "currentColor", strokeWidth: "1", opacity: "0.45" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M4.25 3.1 H8.1 A1.4 1.4 0 0 1 9.5 4.5 V8.1", ...glyphStroke }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1.7", y: "3.9", width: "6.4", height: "6.4", rx: "1.5", ...glyphStroke })
     ] });
   }
   function MaximizeIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Glyph, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", stroke: "currentColor", strokeWidth: "1" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3", y: "3", width: "5.5", height: "5.5", stroke: "currentColor", strokeWidth: "1", opacity: "0.35" })
-    ] });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "2", y: "2", width: "8", height: "8", rx: "1.7", ...glyphStroke }) });
   }
   function MinimizeIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1", y: "4.5", width: "8", height: "1.2", fill: "currentColor", rx: "0.6" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M2.2 6 H9.8", ...glyphStroke }) });
   }
   function CloseIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-      "path",
-      {
-        d: "M2 2 L8 8 M8 2 L2 8",
-        stroke: "currentColor",
-        strokeWidth: "1",
-        strokeLinecap: "round"
-      }
-    ) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M3 3 L9 9 M9 3 L3 9", ...glyphStroke }) });
   }
   function findCenterColumn() {
     const frame = document.querySelector("div:has(> [data-shell-overlay])");
