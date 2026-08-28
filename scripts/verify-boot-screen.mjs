@@ -1,8 +1,6 @@
 /**
- * Boot-screen structure smoke test: verifies the redesigned startup page
- * renders its core visual structure (whale logo, title, eyebrow, status line,
- * bathymetry background, sonar, versions readout) with the expected computed
- * styles.
+ * Boot-screen structure smoke test: verifies the product-hero startup page
+ * (centered whale, title, status, glow) with the expected computed styles.
  *
  * Run: node scripts/verify-boot-screen.mjs
  */
@@ -26,9 +24,6 @@ const chromePath = [
 ].find(existsSync)
 if (chromePath === undefined) throw new Error('Chrome/Chromium executable not found')
 
-// Serve the built renderer over HTTP so module scripts load (file:// blocks
-// cross-origin module/CSS loads in plain Chromium; Electron's loadFile has no
-// such restriction, so this only affects the standalone verification).
 const rendererDir = join(ROOT, 'out', 'renderer')
 const MIME = {
   '.html': 'text/html',
@@ -64,7 +59,10 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--no-sandbox']
 })
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+const page = await browser.newPage({
+  viewport: { width: 1280, height: 800 },
+  colorScheme: 'light'
+})
 await page.addInitScript(() => {
   window.api = { windowControls: {} }
 })
@@ -74,59 +72,41 @@ page.on('console', (msg) => {
 })
 page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
 await page.goto(base, { waitUntil: 'load' })
-await page.waitForTimeout(1200)
+await page.waitForTimeout(800)
 console.log('console errors:', errors)
 
 const checks = {}
 
-// 1. Official whale mark (harness favicon) leads the banner.
 checks.logoVisible = await page.locator('.boot-logo').isVisible()
 checks.logoSvg = (await page.locator('.boot-logo svg').count()) === 1
+checks.glow = (await page.locator('.boot-glow').count()) === 1
+checks.noHorizon = (await page.locator('.boot-horizon').count()) === 0
 
-// 2. Title: full app name, present, styled large.
+const creatureBox = await page.locator('.boot-logo').boundingBox()
+checks.markModest = creatureBox !== null && creatureBox.width >= 48 && creatureBox.width <= 80
+
+const stackBox = await page.locator('.boot-stack').boundingBox()
+checks.stackCentered = Boolean(
+  stackBox && stackBox.x > 200 && stackBox.x + stackBox.width < 1080 && Math.abs(stackBox.x + stackBox.width / 2 - 640) < 40
+)
+
 const title = await page.locator('h1.boot-title').textContent()
-checks.titleText = title?.trim() === 'DeepSeek Harness Desktop'
+checks.titleText = (title ?? '').replace(/\s+/g, ' ').trim() === 'DeepSeek Harness'
 checks.titleVisible = await page.locator('h1.boot-title').isVisible()
 
-// 3. Eyebrow: the deepseek · harness · desktop prefix.
-const eyebrow = await page.locator('.boot-eyebrow').textContent()
-checks.eyebrow = (eyebrow ?? '').includes('deepseek')
-
-// 4. Status line: boot message + mono font + dots.
 checks.statusLine = await page.locator('.boot-line').first().isVisible()
-checks.dots = (await page.locator('.boot-dots span').count()) === 3
-const statusFont = await page
-  .locator('.boot-line')
-  .first()
-  .evaluate((el) => getComputedStyle(el).fontFamily)
-checks.statusMono = statusFont.includes('monospace')
+const statusText = await page.locator('.boot-line').first().textContent()
+checks.statusCopy = (statusText ?? '').includes('Starting the runtime')
 
-// 5. Background: dark deep-sea base with layered gradients.
-const bodyBg = await page.evaluate(() => {
-  const styles = getComputedStyle(document.body)
-  return { background: styles.backgroundColor, backgroundImage: styles.backgroundImage }
-})
-checks.darkBg = bodyBg.background === 'rgb(11, 13, 18)'
-checks.fieldGradient = await page
-  .locator('.boot-field')
-  .evaluate((el) => getComputedStyle(el).backgroundImage.includes('radial-gradient'))
+const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+checks.lightPaper = bodyBg === 'rgb(249, 250, 251)'
 
-// 6. Sonar focus element exists with animation.
-checks.sonar = (await page.locator('.boot-sonar').count()) === 1
-const sonarAnim = await page
-  .locator('.boot-sonar')
-  .evaluate((el) => getComputedStyle(el).animationName)
-checks.sonarAnimates = sonarAnim.includes('ds-sonar')
+checks.booting = (await page.locator('.boot').getAttribute('data-state')) === 'booting'
 
-// 7. Layout: banner left-anchored (title left edge near left padding).
-const bannerBox = await page.locator('.boot-banner').boundingBox()
-checks.bannerLeft = bannerBox !== null && bannerBox.x >= 50 && bannerBox.x < 120
-
-// 8. Versions readout renders (preload stubbed => window.electron undefined => hidden).
 const versionsCount = await page.locator('.versions li').count()
-checks.versions = versionsCount === 0 // hidden without preload; fine
+checks.versions = versionsCount === 0
 
-console.log(JSON.stringify({ bodyBg, checks }, null, 2))
+console.log(JSON.stringify({ bodyBg, checks, creatureBox, stackBox }, null, 2))
 
 const pass = Object.entries(checks).every(([k, v]) => k === 'versions' || v === true)
 console.log(pass ? 'PASS: boot screen structure verified' : 'FAIL: boot screen structure broken')

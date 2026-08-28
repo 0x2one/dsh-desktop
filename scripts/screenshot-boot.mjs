@@ -56,7 +56,10 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--no-sandbox']
 })
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+const page = await browser.newPage({
+  viewport: { width: 1280, height: 800 },
+  colorScheme: 'light'
+})
 await page.addInitScript(() => {
   window.api = { windowControls: {} }
 })
@@ -65,5 +68,13 @@ await page.waitForTimeout(1500)
 const out = join(ROOT, 'scripts', 'boot-screen.png')
 await page.screenshot({ path: out })
 console.log(`screenshot saved: ${out}`)
+
+await page.goto(`${base}/?init-error=${encodeURIComponent('node: not found on PATH')}`, {
+  waitUntil: 'load'
+})
+await page.waitForTimeout(400)
+const errorOut = join(ROOT, 'scripts', 'boot-screen-error.png')
+await page.screenshot({ path: errorOut })
+console.log(`screenshot saved: ${errorOut}`)
 await browser.close()
 server.close()
