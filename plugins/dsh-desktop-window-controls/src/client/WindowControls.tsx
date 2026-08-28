@@ -83,9 +83,9 @@ const styles = {
     alignItems: 'center',
     height: `${TITLE_BAR_HEIGHT}px`,
     zIndex: 1000,
-    // Transparent: the controls float over the content without painting a
-    // strip of their own; hover feedback lives on the buttons only.
-    background: 'transparent',
+    // Background is fully owned by the injected stylesheet
+    // (`[data-dsh-window-controls] { background: transparent }`) — no inline
+    // value, so the CSS rules keep full control.
     userSelect: 'none' as const,
     WebkitAppRegion: 'no-drag' as const,
   },
@@ -98,17 +98,16 @@ const styles = {
     border: 'none',
     margin: 0,
     padding: 0,
-    background: 'transparent',
     color: 'var(--dsw-alias-label-secondary)',
     fontFamily: 'inherit',
     fontSize: '13px',
     lineHeight: '1',
     cursor: 'default',
     outline: 'none',
-    // Softer icon weight that still reads over any surface; hover states
-    // (background / opacity) live in the injected stylesheet
-    // (`[data-dsh-window-controls] [data-dsh-wc-button]` rules).
-    opacity: 0.85,
+    // Background and opacity are fully owned by the injected stylesheet
+    // (`[data-dsh-wc-button]` default + `:hover` rules) — no inline values,
+    // so the hover background actually applies (an inline background would
+    // win over the external :hover rule).
   } as React.CSSProperties,
   icon: {
     width: '12px',

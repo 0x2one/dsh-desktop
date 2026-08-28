@@ -63,9 +63,9 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       alignItems: "center",
       height: `${TITLE_BAR_HEIGHT}px`,
       zIndex: 1e3,
-      // Transparent: the controls float over the content without painting a
-      // strip of their own; hover feedback lives on the buttons only.
-      background: "transparent",
+      // Background is fully owned by the injected stylesheet
+      // (`[data-dsh-window-controls] { background: transparent }`) — no inline
+      // value, so the CSS rules keep full control.
       userSelect: "none",
       WebkitAppRegion: "no-drag"
     },
@@ -78,17 +78,16 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       border: "none",
       margin: 0,
       padding: 0,
-      background: "transparent",
       color: "var(--dsw-alias-label-secondary)",
       fontFamily: "inherit",
       fontSize: "13px",
       lineHeight: "1",
       cursor: "default",
-      outline: "none",
-      // Softer icon weight that still reads over any surface; hover states
-      // (background / opacity) live in the injected stylesheet
-      // (`[data-dsh-window-controls] [data-dsh-wc-button]` rules).
-      opacity: 0.85
+      outline: "none"
+      // Background and opacity are fully owned by the injected stylesheet
+      // (`[data-dsh-wc-button]` default + `:hover` rules) — no inline values,
+      // so the hover background actually applies (an inline background would
+      // win over the external :hover rule).
     },
     icon: {
       width: "12px",
@@ -321,12 +320,16 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
   background: transparent;
   opacity: 0.85;
 }
+/* The harness's own hover token (--dsw-alias-interactive-bg-hover) is only
+   ~6% alpha \u2014 nearly invisible for window chrome. Use a theme-aware 12%
+   overlay of the primary label color instead, so the hover state is clearly
+   visible in both light and dark themes. */
 [data-dsh-window-controls] [data-dsh-wc-button]:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
   opacity: 1;
 }
 [data-dsh-window-controls] [data-dsh-wc-button][data-close]:hover {
-  background: var(--dsw-alias-bg-danger, #e81123);
+  background: var(--dsw-alias-state-error-primary, #e81123);
   color: #ffffff;
   opacity: 1;
 }

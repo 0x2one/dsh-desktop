@@ -84,12 +84,16 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
   background: transparent;
   opacity: 0.85;
 }
+/* The harness's own hover token (--dsw-alias-interactive-bg-hover) is only
+   ~6% alpha — nearly invisible for window chrome. Use a theme-aware 12%
+   overlay of the primary label color instead, so the hover state is clearly
+   visible in both light and dark themes. */
 [data-dsh-window-controls] [data-dsh-wc-button]:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
   opacity: 1;
 }
 [data-dsh-window-controls] [data-dsh-wc-button][data-close]:hover {
-  background: var(--dsw-alias-bg-danger, #e81123);
+  background: var(--dsw-alias-state-error-primary, #e81123);
   color: #ffffff;
   opacity: 1;
 }
