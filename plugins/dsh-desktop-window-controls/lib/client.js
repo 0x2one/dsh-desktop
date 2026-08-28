@@ -90,56 +90,39 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       // win over the external :hover rule).
     },
     icon: {
-      width: "12px",
-      height: "12px",
+      width: "13px",
+      height: "13px",
       display: "block"
     }
   };
+  function Glyph({ children }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", fill: "none", children });
+  }
   function RestoreIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-      "rect",
-      {
-        x: "0.5",
-        y: "0.5",
-        width: "9",
-        height: "9",
-        fill: "none",
-        stroke: "currentColor",
-        strokeWidth: "1"
-      }
-    ) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Glyph, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1.5", y: "3", width: "5.5", height: "5.5", stroke: "currentColor", strokeWidth: "1" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3", y: "1.5", width: "5.5", height: "5.5", stroke: "currentColor", strokeWidth: "1", opacity: "0.45" })
+    ] });
   }
   function MaximizeIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "rect",
-        {
-          x: "0.5",
-          y: "0.5",
-          width: "9",
-          height: "9",
-          fill: "none",
-          stroke: "currentColor",
-          strokeWidth: "1"
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "rect",
-        {
-          x: "2",
-          y: "2",
-          width: "6",
-          height: "6",
-          fill: "none",
-          stroke: "currentColor",
-          strokeWidth: "1",
-          opacity: "0.4"
-        }
-      )
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Glyph, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", stroke: "currentColor", strokeWidth: "1" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3", y: "3", width: "5.5", height: "5.5", stroke: "currentColor", strokeWidth: "1", opacity: "0.35" })
     ] });
   }
   function MinimizeIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "0.5", y: "4.5", width: "9", height: "1", fill: "currentColor" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "1", y: "4.5", width: "8", height: "1.2", fill: "currentColor", rx: "0.6" }) });
+  }
+  function CloseIcon() {
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Glyph, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "path",
+      {
+        d: "M2 2 L8 8 M8 2 L2 8",
+        stroke: "currentColor",
+        strokeWidth: "1",
+        strokeLinecap: "round"
+      }
+    ) });
   }
   function findCenterColumn() {
     const frame = document.querySelector("div:has(> [data-shell-overlay])");
@@ -286,15 +269,7 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
             "aria-label": "Close",
             title: "Close",
             onClick: () => bridge.close(),
-            children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 10 10", style: styles.icon, "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "path",
-              {
-                d: "M1 1 L9 9 M9 1 L1 9",
-                stroke: "currentColor",
-                strokeWidth: "1",
-                fill: "none"
-              }
-            ) })
+            children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CloseIcon, {})
           }
         )
       ] })

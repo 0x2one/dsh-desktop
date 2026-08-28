@@ -110,40 +110,66 @@ const styles = {
     // win over the external :hover rule).
   } as React.CSSProperties,
   icon: {
-    width: '12px',
-    height: '12px',
+    width: '13px',
+    height: '13px',
     display: 'block',
   },
 } as const
 
-/** Restore glyph (single rectangle). */
+/**
+ * Window-control glyphs, drawn on a shared 10×10 grid so all three buttons
+ * read as one coherent family. Geometry follows the platform convention:
+ * minimize is a baseline dash, maximize/restore are overlapping rectangles
+ * (solid front + ghost back), close is a centered cross.
+ */
+function Glyph({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true" fill="none">
+      {children}
+    </svg>
+  )
+}
+
+/** Restore glyph: a small rect overlapping a larger one (backing window). */
 function RestoreIcon(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true">
-      <rect x="0.5" y="0.5" width="9" height="9" fill="none"
-        stroke="currentColor" strokeWidth="1" />
-    </svg>
+    <Glyph>
+      <rect x="1.5" y="3" width="5.5" height="5.5" stroke="currentColor" strokeWidth="1" />
+      <rect x="3" y="1.5" width="5.5" height="5.5" stroke="currentColor" strokeWidth="1" opacity="0.45" />
+    </Glyph>
   )
 }
 
-/** Maximize glyph (two overlapping rectangles). */
+/** Maximize glyph: a solid front rect over a ghost back rect. */
 function MaximizeIcon(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true">
-      <rect x="0.5" y="0.5" width="9" height="9" fill="none"
-        stroke="currentColor" strokeWidth="1" />
-      <rect x="2" y="2" width="6" height="6" fill="none"
-        stroke="currentColor" strokeWidth="1" opacity="0.4" />
-    </svg>
+    <Glyph>
+      <rect x="1.5" y="1.5" width="7" height="7" stroke="currentColor" strokeWidth="1" />
+      <rect x="3" y="3" width="5.5" height="5.5" stroke="currentColor" strokeWidth="1" opacity="0.35" />
+    </Glyph>
   )
 }
 
-/** Minimize glyph (a horizontal dash). */
+/** Minimize glyph: a short baseline dash centered in the grid. */
 function MinimizeIcon(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true">
-      <rect x="0.5" y="4.5" width="9" height="1" fill="currentColor" />
-    </svg>
+    <Glyph>
+      <rect x="1" y="4.5" width="8" height="1.2" fill="currentColor" rx="0.6" />
+    </Glyph>
+  )
+}
+
+/** Close glyph: a centered cross. */
+function CloseIcon(): React.JSX.Element {
+  return (
+    <Glyph>
+      <path
+        d="M2 2 L8 8 M8 2 L2 8"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+    </Glyph>
   )
 }
 
@@ -356,10 +382,7 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
         title="Close"
         onClick={() => bridge.close()}
       >
-        <svg viewBox="0 0 10 10" style={styles.icon} aria-hidden="true">
-          <path d="M1 1 L9 9 M9 1 L1 9" stroke="currentColor" strokeWidth="1"
-            fill="none" />
-        </svg>
+        <CloseIcon />
       </button>
       </div>
     </>
