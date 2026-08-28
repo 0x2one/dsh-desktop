@@ -42,8 +42,8 @@ function App(): React.JSX.Element {
             </div>
           ) : (
             <>
-              <p className="boot-line">Starting The Runtime</p>
-              <p className="boot-sub">profile · node · pnpm</p>
+              <p className="boot-line">Opening Your Workspace</p>
+              <p className="boot-sub">On This Computer Only</p>
               <span className="boot-wait" aria-hidden="true">
                 <span />
                 <span />
