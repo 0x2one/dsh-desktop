@@ -2,8 +2,8 @@
  * Rasterize the DeepSeek whale mark into the window / installer PNG icon.
  *
  * The mark is the harness favicon (`src/renderer/src/assets/logo.svg`) drawn
- * in white on a transparent canvas, with padding so it reads at taskbar size
- * without a black square behind it. Writes `resources/icon.png`
+ * in white on a transparent canvas, with a little padding so it fills the
+ * taskbar slot without a black square behind it. Writes `resources/icon.png`
  * (BrowserWindow) and `build/icon.png` (electron-builder).
  *
  * Run: node scripts/rasterize-icon.mjs
@@ -33,7 +33,7 @@ const mark = svg
   .replace(/<style>[\s\S]*?<\/style>\s*/u, '')
   .replace('width="50.000000"', `width="${SIZE}"`)
   .replace('height="50.000000"', `height="${SIZE}"`)
-  .replace('viewBox="0 0 50 50"', 'viewBox="-6 -6 62 62"')
+  .replace('viewBox="0 0 50 50"', 'viewBox="-2 -2 54 54"')
   .replace('fill="#000"', 'fill="#eef1f6"')
 
 const browser = await chromium.launch({
