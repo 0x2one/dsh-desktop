@@ -97,16 +97,25 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
   color: #ffffff;
   opacity: 1;
 }
+/* Workspace session list bottom wash (ui-workspace fade overlay). Drop the
+   sidebar-fill gradient so the last rows are not tinted. Hashed module
+   class contains _fade. !important: the harness stylesheet is injected later
+   and would otherwise win on equal specificity. */
+[class*="_fade"] {
+  background: none !important;
+}
 `
 
 /** Idempotently inject the title-bar stylesheet into the document head. */
 function ensureTitleBarCss(): void {
   if (typeof document === 'undefined') return
-  if (document.querySelector(`style[data-dsh-css="${TITLE_BAR_CSS_ID}"]`) !== null) return
-  const tag = document.createElement('style')
-  tag.dataset.dshCss = TITLE_BAR_CSS_ID
+  let tag = document.querySelector<HTMLStyleElement>(`style[data-dsh-css="${TITLE_BAR_CSS_ID}"]`)
+  if (tag === null) {
+    tag = document.createElement('style')
+    tag.dataset.dshCss = TITLE_BAR_CSS_ID
+    document.head.appendChild(tag)
+  }
   tag.textContent = titleBarCss
-  document.head.appendChild(tag)
 }
 
 /**
