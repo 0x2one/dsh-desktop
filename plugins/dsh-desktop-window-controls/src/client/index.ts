@@ -79,10 +79,21 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
 }
 [data-dsh-window-controls] {
   background: transparent;
+  color: var(--dsw-alias-label-secondary);
 }
 [data-dsh-window-controls] [data-dsh-wc-button] {
+  appearance: none;
+  -webkit-appearance: none;
   background: transparent;
+  /* Alias tokens (not ButtonText / CanvasText): Chrome pins <button> color
+     to the OS color-scheme, which diverges from the harness light/dark
+     palette when the user picks a theme other than "system". */
+  color: var(--dsw-alias-label-secondary);
   opacity: 0.85;
+}
+[data-dsh-window-controls] [data-dsh-wc-button] svg {
+  color: inherit;
+  fill: currentColor;
 }
 /* The harness's own hover token (--dsw-alias-interactive-bg-hover) is only
    ~6% alpha — nearly invisible for window chrome. Use a theme-aware 12%
@@ -90,10 +101,13 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
    visible in both light and dark themes. */
 [data-dsh-window-controls] [data-dsh-wc-button]:hover {
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+  color: var(--dsw-alias-label-primary);
   opacity: 1;
 }
 [data-dsh-window-controls] [data-dsh-wc-button][data-close]:hover {
   background: var(--dsw-alias-state-error-primary, #e81123);
+  /* Always light on the red fill — inverted/primary-foreground tokens flip
+     in dark theme and would go near-black. */
   color: #ffffff;
   opacity: 1;
 }

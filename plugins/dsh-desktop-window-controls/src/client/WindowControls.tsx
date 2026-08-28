@@ -98,16 +98,15 @@ const styles = {
     border: 'none',
     margin: 0,
     padding: 0,
-    color: 'var(--dsw-alias-label-secondary)',
     fontFamily: 'inherit',
     fontSize: '13px',
     lineHeight: '1',
     cursor: 'default',
     outline: 'none',
-    // Background and opacity are fully owned by the injected stylesheet
-    // (`[data-dsh-wc-button]` default + `:hover` rules) — no inline values,
-    // so the hover background actually applies (an inline background would
-    // win over the external :hover rule).
+    // Color, background and opacity are fully owned by the injected
+    // stylesheet (`[data-dsh-wc-button]` default + `:hover` rules) — no
+    // inline values. An inline color would pin the glyph to one scheme and
+    // would also beat the close-button hover (white on red).
   } as React.CSSProperties,
   icon: {
     width: '16px',

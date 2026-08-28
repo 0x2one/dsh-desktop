@@ -78,16 +78,15 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       border: "none",
       margin: 0,
       padding: 0,
-      color: "var(--dsw-alias-label-secondary)",
       fontFamily: "inherit",
       fontSize: "13px",
       lineHeight: "1",
       cursor: "default",
       outline: "none"
-      // Background and opacity are fully owned by the injected stylesheet
-      // (`[data-dsh-wc-button]` default + `:hover` rules) — no inline values,
-      // so the hover background actually applies (an inline background would
-      // win over the external :hover rule).
+      // Color, background and opacity are fully owned by the injected
+      // stylesheet (`[data-dsh-wc-button]` default + `:hover` rules) — no
+      // inline values. An inline color would pin the glyph to one scheme and
+      // would also beat the close-button hover (white on red).
     },
     icon: {
       width: "16px",
@@ -342,10 +341,21 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
 }
 [data-dsh-window-controls] {
   background: transparent;
+  color: var(--dsw-alias-label-secondary);
 }
 [data-dsh-window-controls] [data-dsh-wc-button] {
+  appearance: none;
+  -webkit-appearance: none;
   background: transparent;
+  /* Alias tokens (not ButtonText / CanvasText): Chrome pins <button> color
+     to the OS color-scheme, which diverges from the harness light/dark
+     palette when the user picks a theme other than "system". */
+  color: var(--dsw-alias-label-secondary);
   opacity: 0.85;
+}
+[data-dsh-window-controls] [data-dsh-wc-button] svg {
+  color: inherit;
+  fill: currentColor;
 }
 /* The harness's own hover token (--dsw-alias-interactive-bg-hover) is only
    ~6% alpha \u2014 nearly invisible for window chrome. Use a theme-aware 12%
@@ -353,10 +363,13 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
    visible in both light and dark themes. */
 [data-dsh-window-controls] [data-dsh-wc-button]:hover {
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+  color: var(--dsw-alias-label-primary);
   opacity: 1;
 }
 [data-dsh-window-controls] [data-dsh-wc-button][data-close]:hover {
   background: var(--dsw-alias-state-error-primary, #e81123);
+  /* Always light on the red fill \u2014 inverted/primary-foreground tokens flip
+     in dark theme and would go near-black. */
   color: #ffffff;
   opacity: 1;
 }
