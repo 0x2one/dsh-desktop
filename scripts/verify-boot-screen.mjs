@@ -97,6 +97,9 @@ checks.titleVisible = await page.locator('h1.boot-title').isVisible()
 checks.statusLine = await page.locator('.boot-line').first().isVisible()
 const statusText = await page.locator('.boot-line').first().textContent()
 checks.statusCopy = (statusText ?? '').includes('Starting The Runtime')
+checks.waitBar = (await page.locator('.boot-wait').count()) === 1
+checks.waitBarVisible = await page.locator('.boot-wait').isVisible()
+checks.waitDots = (await page.locator('.boot-wait span').count()) === 3
 
 const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
 checks.lightPaper = bodyBg === 'rgb(249, 250, 251)'

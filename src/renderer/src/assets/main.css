@@ -13,6 +13,7 @@
   --boot-mute: #61666b; /* bluish-700 */
   --boot-faint: #81858c; /* bluish-600 */
   --boot-glow: rgb(97 135 216 / 14%); /* hero ellipse #6187D8 */
+  --boot-brand: #4176e6; /* deepseek-500 */
   --boot-error: #ec1313; /* red-600 */
   --boot-error-soft: rgb(254 242 242); /* red-50 */
 }
@@ -100,6 +101,9 @@ body {
   align-items: center;
   text-align: center;
   padding: 0 24px;
+  /* Drag regions on Windows can freeze CSS animations; keep the waiting
+     cluster out of the window-move hit target. */
+  -webkit-app-region: no-drag;
 }
 
 .boot-logo {
@@ -108,6 +112,11 @@ body {
   height: 64px;
   margin: 0 0 20px;
   color: var(--boot-ink);
+  transform-origin: 50% 60%;
+}
+
+.boot[data-state='booting'] .boot-logo {
+  animation: boot-swim 2.4s ease-in-out infinite;
 }
 
 .boot-logo svg {
@@ -164,6 +173,57 @@ body {
   font-size: 12px;
   line-height: 18px;
   color: var(--boot-faint);
+}
+
+.boot-wait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 14px;
+  margin: 18px 0 0;
+}
+
+.boot-wait span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--boot-brand);
+  opacity: 0.22;
+  animation: boot-dot 1.05s ease-in-out infinite;
+}
+
+.boot-wait span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.boot-wait span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes boot-swim {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  35% {
+    transform: translate(-3px, -4px) rotate(-8deg);
+  }
+  70% {
+    transform: translate(3px, 1px) rotate(5deg);
+  }
+}
+
+@keyframes boot-dot {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
 }
 
 .boot-detail {
@@ -223,7 +283,22 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot-glow {
+  .boot-glow,
+  .boot[data-state='booting'] .boot-logo {
     animation: none;
+  }
+
+  .boot-wait span {
+    animation: boot-dot-fade 1.05s ease-in-out infinite;
+  }
+}
+
+@keyframes boot-dot-fade {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 1;
   }
 }

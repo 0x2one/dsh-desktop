@@ -44,6 +44,11 @@ function App(): React.JSX.Element {
             <>
               <p className="boot-line">Starting The Runtime</p>
               <p className="boot-sub">Profile · Node · Pnpm</p>
+              <span className="boot-wait" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
             </>
           )}
         </section>
