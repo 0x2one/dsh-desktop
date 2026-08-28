@@ -37,13 +37,13 @@ function App(): React.JSX.Element {
               <p className="boot-line boot-line-error">Could Not Start</p>
               <pre className="boot-detail">{initError}</pre>
               <p className="boot-sub">
-                Install Node.js 22.19+ (Or 24) And Pnpm, Then Open The App Again.
+                Install Node.js 22.19+ (Or 24) And PNPM, Then Open The App Again.
               </p>
             </div>
           ) : (
             <>
               <p className="boot-line">Starting The Runtime</p>
-              <p className="boot-sub">Profile · Node · Pnpm</p>
+              <p className="boot-sub">profile · node · pnpm</p>
               <span className="boot-wait" aria-hidden="true">
                 <span />
                 <span />
