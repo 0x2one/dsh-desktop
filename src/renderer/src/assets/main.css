@@ -8,6 +8,10 @@ body {
   background-image: url('./wavy-lines.svg');
   background-size: cover;
   user-select: none;
+  /* The native frame is hidden (frame: false); this local fallback page has
+     no interactive controls, so the whole surface is a drag region. The real
+     harness UI gets its own drag strip from the window-controls plugin. */
+  -webkit-app-region: drag;
 }
 
 code {

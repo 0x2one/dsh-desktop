@@ -11,6 +11,13 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+extraResources:
+  - from: plugins/dsh-desktop-window-controls/lib
+    to: plugins/dsh-desktop-window-controls/lib
+    filter:
+      - '**/*'
+  - from: plugins/dsh-desktop-window-controls/package.json
+    to: plugins/dsh-desktop-window-controls/package.json
 win:
   executableName: dsh-desktop
 nsis:

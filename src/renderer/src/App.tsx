@@ -1,34 +1,38 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useEffect, useState } from 'react'
 
+/**
+ * Fallback renderer page.
+ *
+ * The production window normally loads the embedded DeepSeek Harness web UI
+ * (`dsh web`); this React page appears only when the service could not start
+ * (missing runtimes, spawn failure) or during development before the harness
+ * is ready. It surfaces the main process's error message.
+ */
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+  const [initError, setInitError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const error = params.get('init-error')
+    if (error !== null) setInitError(error)
+  }, [])
 
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
+    <div className="app-fallback">
+      <h1>dsh-desktop</h1>
+      {initError === null ? (
+        <p className="text">Starting DeepSeek Harness…</p>
+      ) : (
+        <div className="fallback-error">
+          <p className="text">DeepSeek Harness could not start:</p>
+          <pre className="error-detail">{initError}</pre>
+          <p className="text">
+            Make sure Node.js 22.19+ (or 24+) and pnpm are installed and on PATH, then restart the
+            application.
+          </p>
         </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
+      )}
+    </div>
   )
 }
 
