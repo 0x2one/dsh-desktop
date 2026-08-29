@@ -6,10 +6,17 @@ import { checkRuntimeRequirements } from './requirements'
 import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
 import { ensurePluginsInstalled, waitForPluginInGraph, defaultDshHome } from './plugin-install'
-import { prepareAppProfile, appProfileDir, APP_PROFILE } from './profile-setup'
+import {
+  prepareAppProfile,
+  appProfileDir,
+  APP_PROFILE,
+  createHarnessProfile,
+  normalizeProfileName
+} from './profile-setup'
 import { ensureMarketInstalled } from './plugin-market'
 import { createAppTray, type AppTray } from './tray'
 import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
+import { promptProfileName } from './profile-prompt'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -83,6 +90,48 @@ if (!gotTheLock) {
       }
     } finally {
       switchingProfile = false
+    }
+  }
+
+  async function createNewProfile(): Promise<void> {
+    if (switchingProfile || quitRequested) return
+    showMainWindow()
+    const raw = await promptProfileName(mainWindow)
+    if (raw === null || raw.trim() === '') return
+    try {
+      const name = normalizeProfileName(raw)
+      createHarnessProfile(name)
+      appTray?.refresh()
+
+      // Same bootstrap as first-launch `dsh-desktop`: install dshmarket so the
+      // plugin market is present when this profile boots. pnpm may take minutes.
+      loadLocalRenderer()
+      switchingProfile = true
+      try {
+        const market = await ensureMarketInstalled(undefined, name)
+        if (!market.installed && market.error !== undefined) {
+          void dialog.showMessageBox({
+            type: 'warning',
+            title: '插件市场安装失败',
+            message: `未能在环境「${name}」中安装 dshmarket`,
+            detail: `${market.error}\n\n环境已创建，可稍后重试安装。`,
+            buttons: ['OK']
+          })
+        }
+      } finally {
+        switchingProfile = false
+      }
+
+      await switchProfile(name)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      void dialog.showMessageBox({
+        type: 'error',
+        title: '无法创建环境',
+        message: '新环境没有创建成功',
+        detail,
+        buttons: ['OK']
+      })
     }
   }
 
@@ -281,6 +330,9 @@ if (!gotTheLock) {
       onShow: showMainWindow,
       onSelectProfile: (name) => {
         void switchProfile(name)
+      },
+      onCreateProfile: () => {
+        void createNewProfile()
       },
       onQuit: () => {
         app.quit()

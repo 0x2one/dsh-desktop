@@ -24,6 +24,8 @@ export interface AppTrayOptions {
   currentProfile: string
   /** User picked a different profile in the 启动环境 submenu. */
   onSelectProfile: (name: string) => void
+  /** User chose 新增环境. */
+  onCreateProfile: () => void
 }
 
 /** Live tray handle: refresh the menu after a profile switch, destroy on quit. */
@@ -45,15 +47,19 @@ export function createAppTray(options: AppTrayOptions): AppTray {
   const applyMenu = (): void => {
     const profiles = listProfiles()
     tray.setToolTip(`dsh-desktop (${current})`)
-    const profileItems: Electron.MenuItemConstructorOptions[] = profiles.map((name) => ({
-      label: name,
-      type: 'radio',
-      checked: name === current,
-      click: (): void => {
-        if (name === current) return
-        options.onSelectProfile(name)
-      }
-    }))
+    const profileItems: Electron.MenuItemConstructorOptions[] = [
+      ...profiles.map((name) => ({
+        label: name,
+        type: 'radio' as const,
+        checked: name === current,
+        click: (): void => {
+          if (name === current) return
+          options.onSelectProfile(name)
+        }
+      })),
+      { type: 'separator' },
+      { label: '新增环境…', click: (): void => options.onCreateProfile() }
+    ]
     tray.setContextMenu(
       Menu.buildFromTemplate([
         { label: '显示窗口', click: options.onShow },

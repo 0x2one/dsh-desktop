@@ -73,19 +73,31 @@ nodeLinker: hoisted
 autoInstallPeers: false
 `
 
+/** dsh profile directory names: lowercase letter or digit, then [a-z0-9-]* */
+export const PROFILE_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/
+
 /**
- * Ensure the app profile exists with the web bundle layers. Idempotent:
- * existing files are preserved; the bundle list is only ever set on first
- * creation. Returns the profile directory.
+ * Normalize and validate a harness profile name.
+ * @throws {Error} when the name is empty, reserved, or not a legal id.
  */
-export function ensureAppProfile(home: string = resolveDshHome()): string {
-  const dir = appProfileDir(home)
+export function normalizeProfileName(raw: string): string {
+  const name = raw.trim().toLowerCase()
+  if (name === '') throw new Error('请输入环境名称')
+  if (name === 'node_modules') throw new Error('该名称不可用')
+  if (!PROFILE_NAME_PATTERN.test(name)) {
+    throw new Error('名称须以小写字母或数字开头，只能包含小写字母、数字和连字符')
+  }
+  if (name.length > 64) throw new Error('名称过长（最多 64 个字符）')
+  return name
+}
+
+function writeProfileSkeleton(dir: string, name: string): void {
   mkdirSync(dir, { recursive: true })
 
   const manifestPath = join(dir, 'package.json')
   if (!existsSync(manifestPath)) {
     const manifest = {
-      name: 'dsh-profile-dsh-desktop',
+      name: `dsh-profile-${name}`,
       private: true,
       dependencies: {},
       dsh: { profile: { bundles: [...APP_PROFILE_BUNDLES], patchReload: PROFILE_PATCH_RELOAD } }
@@ -98,8 +110,29 @@ export function ensureAppProfile(home: string = resolveDshHome()): string {
 
   const workspacePath = join(dir, 'pnpm-workspace.yaml')
   if (!existsSync(workspacePath)) writeFileSync(workspacePath, PROFILE_PNPM_WORKSPACE)
+}
 
+/**
+ * Create a new empty web-capable harness profile (same skeleton as dsh-desktop).
+ * Does not overwrite an existing directory.
+ * @returns the profile directory.
+ */
+export function createHarnessProfile(rawName: string, home: string = resolveDshHome()): string {
+  const name = normalizeProfileName(rawName)
+  const dir = profileDir(name, home)
+  if (existsSync(dir)) throw new Error(`环境「${name}」已存在`)
+  writeProfileSkeleton(dir, name)
   return dir
+}
+
+/**
+ * Ensure the app profile exists with the web bundle layers. Idempotent:
+ * existing files are preserved; the bundle list is only ever set on first
+ * creation. Returns the profile directory.
+ */
+export function ensureAppProfile(home: string = resolveDshHome()): string {
+  writeProfileSkeleton(appProfileDir(home), APP_PROFILE)
+  return appProfileDir(home)
 }
 
 /**
