@@ -5,10 +5,11 @@ import icon from '../../resources/icon.png?asset'
 import { checkRuntimeRequirements } from './requirements'
 import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
-import { ensurePluginsInstalled, waitForPluginInGraph } from './plugin-install'
-import { prepareAppProfile, appProfileDir } from './profile-setup'
+import { ensurePluginsInstalled, waitForPluginInGraph, defaultDshHome } from './plugin-install'
+import { prepareAppProfile, appProfileDir, APP_PROFILE } from './profile-setup'
 import { ensureMarketInstalled } from './plugin-market'
-import { createAppTray } from './tray'
+import { createAppTray, type AppTray } from './tray'
+import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -25,7 +26,9 @@ if (!gotTheLock) {
   let mainWindow: BrowserWindow | null = null
   let dshService: DshService | null = null
   let quitRequested = false
-  let disposeTray: (() => void) | null = null
+  let appTray: AppTray | null = null
+  let activeProfile = APP_PROFILE
+  let switchingProfile = false
   // Set during app.whenReady before any window/service starts; a false value
   // means the app profile could not be initialized, so dsh must not boot.
   let profileReady = true
@@ -35,6 +38,52 @@ if (!gotTheLock) {
     if (mainWindow.isMinimized()) mainWindow.restore()
     if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
+  }
+
+  function loadLocalRenderer(error?: string): void {
+    if (mainWindow === null || mainWindow.isDestroyed()) return
+    const window = mainWindow
+    const url = process.env['ELECTRON_RENDERER_URL']
+    const target = url ?? join(__dirname, '../renderer/index.html')
+    const query = error === undefined ? '' : `?init-error=${encodeURIComponent(error)}`
+    if (url !== undefined) void window.loadURL(`${url}${query}`)
+    else void window.loadFile(target, query === '' ? undefined : { search: query.slice(1) })
+  }
+
+  async function switchProfile(name: string): Promise<void> {
+    if (dshService === null || switchingProfile || quitRequested) return
+    const previous = dshService.getProfile()
+    if (name === previous) return
+    switchingProfile = true
+    loadLocalRenderer()
+    try {
+      await dshService.restart(name)
+      savePreferredProfile(name)
+      activeProfile = name
+      appTray?.refresh(name)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      console.error('[dsh-desktop] profile switch failed:', error)
+      void dialog.showMessageBox({
+        type: 'error',
+        title: 'Failed to switch profile',
+        message: `Could not start profile "${name}"`,
+        detail,
+        buttons: ['OK']
+      })
+      try {
+        await dshService.restart(previous)
+        savePreferredProfile(previous)
+        activeProfile = previous
+        appTray?.refresh(previous)
+      } catch (restartError) {
+        console.error('[dsh-desktop] failed to restore previous profile:', restartError)
+        loadLocalRenderer(`Failed to switch to "${name}" and could not restore "${previous}".`)
+        appTray?.refresh(dshService.getProfile())
+      }
+    } finally {
+      switchingProfile = false
+    }
   }
 
   app.on('second-instance', () => {
@@ -88,16 +137,9 @@ if (!gotTheLock) {
     // In development the renderer is served by electron-vite; in production it
     // is a file. The dsh UI takes over the window once the service is ready,
     // so the local renderer only appears for init failures and development.
-    const loadLocalRenderer = (error?: string): void => {
-      const url = process.env['ELECTRON_RENDERER_URL']
-      const target = url ?? join(__dirname, '../renderer/index.html')
-      const query = error === undefined ? '' : `?init-error=${encodeURIComponent(error)}`
-      if (url !== undefined) window.loadURL(`${url}${query}`)
-      else window.loadFile(target, query === '' ? undefined : { search: query.slice(1) })
-    }
 
     // Show something immediately while the service starts.
-    void loadLocalRenderer()
+    loadLocalRenderer()
 
     // Market install outcome, set by the startup task below; the window shows
     // the loading page during a first-run install, and the harness boot waits
@@ -107,7 +149,7 @@ if (!gotTheLock) {
     void (async () => {
       // The app profile must exist before the harness can boot on it.
       if (!profileReady) {
-        void loadLocalRenderer(
+        loadLocalRenderer(
           'The dsh-desktop profile could not be initialized. See the error dialog for details.'
         )
         return
@@ -142,35 +184,43 @@ if (!gotTheLock) {
       }
 
       if (dshService === null)
-        dshService = new DshService({
-          onReady: (url) => {
-            // Inject the window-controls plugin into the harness profile, then
-            // wait for the harness's live patch reload to fold the plugin into
-            // the browser boot graph before loading the window — the first paint
-            // then already shows the window controls. On timeout (or when the
-            // injection is skipped because the plugin is already installed) the
-            // window still loads; the plugin appears after the next reload.
-            void (async () => {
-              try {
-                const injected = ensurePluginsInstalled()
-                if (injected) await waitForPluginInGraph(url)
-              } catch (error) {
-                console.error('[dsh-desktop] plugin injection failed:', error)
-              }
-              if (!window.isDestroyed()) void window.loadURL(url)
-            })()
+        dshService = new DshService(
+          {
+            onReady: (url) => {
+              // Inject the window-controls plugin into the active harness
+              // profile, then wait for the harness's live patch reload to fold
+              // the plugin into the browser boot graph before loading the
+              // window — the first paint then already shows the window
+              // controls. On timeout (or when the injection is skipped because
+              // the plugin is already installed) the window still loads; the
+              // plugin appears after the next reload.
+              void (async () => {
+                try {
+                  const profile = dshService?.getProfile() ?? activeProfile
+                  const injected = ensurePluginsInstalled(defaultDshHome(), profile)
+                  if (injected) await waitForPluginInGraph(url)
+                } catch (error) {
+                  console.error('[dsh-desktop] plugin injection failed:', error)
+                }
+                if (window.isDestroyed()) return
+                // A profile switch may have started a newer process; ignore this URL.
+                if (dshService?.getUrl() !== url) return
+                void window.loadURL(url)
+              })()
+            },
+            onUnexpectedExit: (code, signal) => {
+              if (quitRequested || window.isDestroyed()) return
+              loadLocalRenderer(
+                `dsh web exited unexpectedly (code ${String(code)}, signal ${String(signal)})`
+              )
+            },
+            onStartFailure: (message) => {
+              if (quitRequested || window.isDestroyed()) return
+              loadLocalRenderer(message)
+            }
           },
-          onUnexpectedExit: (code, signal) => {
-            if (quitRequested || window.isDestroyed()) return
-            void loadLocalRenderer(
-              `dsh web exited unexpectedly (code ${String(code)}, signal ${String(signal)})`
-            )
-          },
-          onStartFailure: (message) => {
-            if (quitRequested || window.isDestroyed()) return
-            void loadLocalRenderer(message)
-          }
-        })
+          activeProfile
+        )
       try {
         await dshService.start()
       } catch (error) {
@@ -218,21 +268,26 @@ if (!gotTheLock) {
     let profileError: string | undefined
     try {
       prepareAppProfile()
+      activeProfile = loadPreferredProfile()
     } catch (error) {
       profileReady = false
       profileError = error instanceof Error ? error.message : String(error)
       console.error('[dsh-desktop] profile initialization failed:', error)
     }
 
-    createWindow()
-
-    disposeTray = createAppTray({
+    appTray = createAppTray({
       icon,
+      currentProfile: activeProfile,
       onShow: showMainWindow,
+      onSelectProfile: (name) => {
+        void switchProfile(name)
+      },
       onQuit: () => {
         app.quit()
       }
     })
+
+    createWindow()
 
     if (!profileReady) {
       void dialog.showMessageBox({
@@ -258,8 +313,8 @@ if (!gotTheLock) {
   // Stop the embedded dsh service before quitting.
   app.on('before-quit', () => {
     quitRequested = true
-    disposeTray?.()
-    disposeTray = null
+    appTray?.destroy()
+    appTray = null
     void dshService?.stop()
   })
 

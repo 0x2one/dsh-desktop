@@ -40,14 +40,24 @@ export function resolveDshHome(): string {
   return join(homedir(), '.dsh')
 }
 
-/** Absolute profile directory. */
-export function appProfileDir(home: string = resolveDshHome()): string {
-  return join(home, 'profiles', APP_PROFILE)
+/** Absolute directory of a named harness profile. */
+export function profileDir(name: string, home: string = resolveDshHome()): string {
+  return join(home, 'profiles', name)
 }
 
-/** Absolute patch file of the app profile. */
+/** Absolute `cordis.patch.yml` of a named harness profile. */
+export function profilePatchPath(name: string, home: string = resolveDshHome()): string {
+  return join(profileDir(name, home), 'cordis.patch.yml')
+}
+
+/** Absolute directory of the app's default profile (`dsh-desktop`). */
+export function appProfileDir(home: string = resolveDshHome()): string {
+  return profileDir(APP_PROFILE, home)
+}
+
+/** Absolute patch file of the app's default profile. */
 export function appProfilePatchPath(home: string = resolveDshHome()): string {
-  return join(appProfileDir(home), 'cordis.patch.yml')
+  return profilePatchPath(APP_PROFILE, home)
 }
 
 const PROFILE_PATCH_TEMPLATE = `# Your patch layer for this dsh profile, applied after every bundle layer:
@@ -78,7 +88,7 @@ export function ensureAppProfile(home: string = resolveDshHome()): string {
       name: 'dsh-profile-dsh-desktop',
       private: true,
       dependencies: {},
-      dsh: { profile: { bundles: [...APP_PROFILE_BUNDLES], patchReload: PROFILE_PATCH_RELOAD } },
+      dsh: { profile: { bundles: [...APP_PROFILE_BUNDLES], patchReload: PROFILE_PATCH_RELOAD } }
     }
     writeFileSync(manifestPath, JSON.stringify(manifest, undefined, 2) + '\n')
   }
@@ -137,8 +147,8 @@ export function prepareAppProfile(home: string = resolveDshHome()): string {
       profile: {
         ...manifest.dsh?.profile,
         bundles: merged,
-        patchReload: PROFILE_PATCH_RELOAD,
-      },
+        patchReload: PROFILE_PATCH_RELOAD
+      }
     }
     writeFileSync(manifestPath, JSON.stringify(manifest, undefined, 2) + '\n')
   }

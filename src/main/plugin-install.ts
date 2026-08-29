@@ -19,7 +19,12 @@
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
-import { appProfileDir, appProfilePatchPath, resolveDshHome as resolveProfileHome } from './profile-setup'
+import {
+  APP_PROFILE,
+  profileDir,
+  profilePatchPath,
+  resolveDshHome as resolveProfileHome
+} from './profile-setup'
 
 /** Plugin package name (matches plugins/dsh-desktop-window-controls/package.json). */
 export const WINDOW_CONTROLS_PACKAGE = '@dsh-desktop/window-controls'
@@ -52,12 +57,15 @@ const WINDOW_CONTROLS_REL = join('dsh-desktop-window-controls')
  */
 function pluginsSourceRoot(): string {
   const override = process.env.DSH_DESKTOP_PLUGINS_ROOT
-  if (override !== undefined && override.trim() !== '' && existsSync(join(override, WINDOW_CONTROLS_REL))) {
+  if (
+    override !== undefined &&
+    override.trim() !== '' &&
+    existsSync(join(override, WINDOW_CONTROLS_REL))
+  ) {
     return override
   }
-  const packaged = process.resourcesPath !== undefined
-    ? join(process.resourcesPath, 'plugins')
-    : undefined
+  const packaged =
+    process.resourcesPath !== undefined ? join(process.resourcesPath, 'plugins') : undefined
   if (packaged !== undefined && existsSync(join(packaged, WINDOW_CONTROLS_REL))) return packaged
   return join(process.cwd(), 'plugins')
 }
@@ -72,8 +80,8 @@ export function defaultDshHome(): string {
 }
 
 /** Absolute node_modules target for the window-controls package. */
-function pluginTargetDir(home: string): string {
-  return join(appProfileDir(home), 'node_modules', WINDOW_CONTROLS_PACKAGE)
+function pluginTargetDir(home: string, profile: string): string {
+  return join(profileDir(profile, home), 'node_modules', WINDOW_CONTROLS_PACKAGE)
 }
 
 /** Whether the built plugin source exists (used to skip silently in dev). */
@@ -82,17 +90,21 @@ export function pluginBuildExists(): boolean {
 }
 
 /**
- * Copy the built window-controls package into the web profile's node_modules.
+ * Copy the built window-controls package into the profile's node_modules.
  * Idempotent: an existing install with the same package version is left alone.
  * @param home - the harness home (defaults to `~/.dsh`).
+ * @param profile - harness profile name (defaults to `dsh-desktop`).
  * @returns whether the plugin is present after the call.
  */
-export function installWindowControlsPackage(home: string = defaultDshHome()): boolean {
+export function installWindowControlsPackage(
+  home: string = defaultDshHome(),
+  profile: string = APP_PROFILE
+): boolean {
   const source = join(pluginsSourceRoot(), WINDOW_CONTROLS_REL)
   const sourceManifest = join(source, 'package.json')
   if (!existsSync(sourceManifest)) return false
 
-  const target = pluginTargetDir(home)
+  const target = pluginTargetDir(home, profile)
   const targetManifest = join(target, 'package.json')
   const sourceVersion = readPackageVersion(sourceManifest)
   const targetVersion = existsSync(targetManifest) ? readPackageVersion(targetManifest) : undefined
@@ -149,10 +161,14 @@ function withDesktopOnlyDisabled(content: string): string {
  * stream, so a trailing `[]` is replaced by the insert block (comments
  * before it are kept).
  * @param home - the harness home.
+ * @param profile - harness profile name (defaults to `dsh-desktop`).
  * @returns true when the patch now contains the entry (whether just written or already present).
  */
-export function ensureWindowControlsPatch(home: string = defaultDshHome()): boolean {
-  const patchPath = appProfilePatchPath(home)
+export function ensureWindowControlsPatch(
+  home: string = defaultDshHome(),
+  profile: string = APP_PROFILE
+): boolean {
+  const patchPath = profilePatchPath(profile, home)
   let content: string
   try {
     content = readFileSync(patchPath, 'utf8')
@@ -173,9 +189,10 @@ export function ensureWindowControlsPatch(home: string = defaultDshHome()): bool
   // user rows, other inserts — is preserved and the block appended.
   const body = content.replace(/\s+$/, '')
   const templateMatch = /\n?^\s*\[\]\s*$/m.exec(body)
-  const next = templateMatch !== null
-    ? `${body.slice(0, templateMatch.index).replace(/\s+$/, '')}\n${windowControlsPatchBlock()}`
-    : `${body}\n${windowControlsPatchBlock()}`
+  const next =
+    templateMatch !== null
+      ? `${body.slice(0, templateMatch.index).replace(/\s+$/, '')}\n${windowControlsPatchBlock()}`
+      : `${body}\n${windowControlsPatchBlock()}`
   mkdirSync(dirname(patchPath), { recursive: true })
   writeFileSync(patchPath, next, 'utf8')
   return true
@@ -184,11 +201,16 @@ export function ensureWindowControlsPatch(home: string = defaultDshHome()): bool
 /**
  * Full injection: install the package and ensure the patch entry, in that
  * order (the patch entry is inert until the package is resolvable).
+ * @param home - the harness home (defaults to `~/.dsh`).
+ * @param profile - harness profile name (defaults to `dsh-desktop`).
  * @returns true when both steps succeeded.
  */
-export function ensurePluginsInstalled(home: string = defaultDshHome()): boolean {
-  const installed = installWindowControlsPackage(home)
-  const patched = ensureWindowControlsPatch(home)
+export function ensurePluginsInstalled(
+  home: string = defaultDshHome(),
+  profile: string = APP_PROFILE
+): boolean {
+  const installed = installWindowControlsPackage(home, profile)
+  const patched = ensureWindowControlsPatch(home, profile)
   return installed && patched
 }
 
