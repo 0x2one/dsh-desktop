@@ -135,6 +135,14 @@ function ensureTitleBarCss(): void {
   tag.textContent = titleBarCss
 }
 
+/** Drop leftover title-bar CSS (CLI / live reload after a desktop session). */
+function removeTitleBarCss(): void {
+  if (typeof document === 'undefined') return
+  document.querySelectorAll(`style[data-dsh-css="${TITLE_BAR_CSS_ID}"]`).forEach((el) => {
+    el.remove()
+  })
+}
+
 /**
  * Whether this page is the dsh-desktop Electron window.
  *
@@ -151,14 +159,19 @@ function isDesktopHost(): boolean {
  * Client plugin body: register the window controls and drag strip into
  * shell.overlay and inject the title-bar offset stylesheet — but only when
  * the dsh-desktop preload bridge is present. Console `dsh --profile
- * dsh-desktop` in a normal browser has no bridge, so this is a no-op: no
- * overlay, no stylesheet. The `inject` wrapper defers registration until
- * the layout plugin declares the seat (it is declared by ui-layout's
- * AppFrame registration).
+ * dsh-desktop` in a normal browser has no bridge, so this is a no-op: any
+ * leftover title-bar stylesheet is removed (so Session log returns to its
+ * stock position) and the overlay is not registered. The host patch also
+ * disables this plugin unless `DSH_DESKTOP=1`. The `inject` wrapper defers
+ * registration until the layout plugin declares the seat (it is declared by
+ * ui-layout's AppFrame registration).
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  if (!isDesktopHost()) return
+  if (!isDesktopHost()) {
+    removeTitleBarCss()
+    return
+  }
   ensureTitleBarCss()
   ctx.slots.inject(
     'shell.overlay',

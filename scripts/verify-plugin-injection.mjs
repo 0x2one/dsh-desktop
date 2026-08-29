@@ -104,6 +104,23 @@ step('template [] replaced, comment header kept', () => {
   if (patch.includes('[]')) throw new Error('empty [] array still present — invalid YAML with following rows')
   if (!patch.includes(WINDOW_CONTROLS_ENTRY_ID)) throw new Error('window-controls entry missing')
   if (!patch.includes('- insert:')) throw new Error('insert block missing')
+  if (!patch.includes("process.env.DSH_DESKTOP !== '1'")) throw new Error('desktop-only disabled expression missing')
+})
+
+step('legacy insert is upgraded with desktop-only disabled', () => {
+  const legacy = `# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; \`!!js\` expressions allowed).
+- insert:
+    - id: ${WINDOW_CONTROLS_ENTRY_ID}
+      name: '@dsh-desktop/window-controls'
+`
+  writeFileSync(join(PROFILE, 'cordis.patch.yml'), legacy)
+  if (!ensurePluginsInstalled(DSH_HOME)) throw new Error('upgrade injection failed')
+  const after = readFileSync(join(PROFILE, 'cordis.patch.yml'), 'utf8')
+  if (!after.includes("process.env.DSH_DESKTOP !== '1'")) throw new Error('disabled expression not added')
+  const count = after.split(WINDOW_CONTROLS_ENTRY_ID).length - 1
+  if (count !== 1) throw new Error(`entry appears ${count} times after upgrade`)
 })
 
 step('user rows appended later are preserved across injection', () => {
@@ -148,7 +165,7 @@ const { createInterface } = await import('node:readline')
 const ready = new Promise((resolve, reject) => {
   const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.1-rc.2', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
     cwd: ROOT,
-    env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1' },
+    env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1', DSH_DESKTOP: '1' },
     shell: process.platform === 'win32',
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],

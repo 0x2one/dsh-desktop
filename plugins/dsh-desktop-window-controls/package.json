@@ -1,6 +1,6 @@
 {
   "name": "@dsh-desktop/window-controls",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "dsh-desktop window controls (minimize / maximize / close) rendered in the DeepSeek Harness web UI top-right corner",
   "type": "module",
   "main": "lib/index.js",

@@ -58,7 +58,7 @@ const PLUGIN_ID = '@dsh-desktop/window-controls'
 const ready = new Promise((resolve, reject) => {
   const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.1-rc.2', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
     cwd: ROOT,
-    env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1' },
+    env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1', DSH_DESKTOP: '1' },
     shell: process.platform === 'win32',
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],

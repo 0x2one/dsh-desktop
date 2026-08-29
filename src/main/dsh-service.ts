@@ -21,6 +21,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { app } from 'electron'
 import { APP_PROFILE, prepareAppProfile } from './profile-setup'
+import { DSH_DESKTOP_ENV } from './plugin-install'
 
 /** Fixed harness version per project requirements. */
 export const DSH_VERSION = '0.1.1-rc.2'
@@ -103,6 +104,7 @@ export class DshService {
         ...process.env,
         // Telemetry opt-out: ANY non-empty value disables (documented switch).
         DSH_TELEMETRY_DISABLED: '1',
+        [DSH_DESKTOP_ENV]: '1'
       },
       shell: process.platform === 'win32',
       windowsHide: true,

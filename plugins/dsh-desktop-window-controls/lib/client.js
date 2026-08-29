@@ -391,13 +391,22 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
     }
     tag.textContent = titleBarCss;
   }
+  function removeTitleBarCss() {
+    if (typeof document === "undefined") return;
+    document.querySelectorAll(`style[data-dsh-css="${TITLE_BAR_CSS_ID}"]`).forEach((el) => {
+      el.remove();
+    });
+  }
   function isDesktopHost() {
     if (typeof window === "undefined") return false;
     const api = window.api;
     return api?.windowControls !== void 0;
   }
   function apply(ctx) {
-    if (!isDesktopHost()) return;
+    if (!isDesktopHost()) {
+      removeTitleBarCss();
+      return;
+    }
     ensureTitleBarCss();
     ctx.slots.inject(
       "shell.overlay",
