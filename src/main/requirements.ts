@@ -12,6 +12,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { PRODUCT_NAME } from './app-name'
+import { spawnEnv, spawnShell, spawnWorkingDirectory } from './spawn-env'
 
 /** Minimum Node.js major that @deepseek-ai/dsh 0.1.1-rc.2 accepts. */
 export const MIN_NODE_MAJOR = 22
@@ -36,7 +37,9 @@ export interface RuntimeRequirements {
 function probeVersion(command: string, args: readonly string[]): string | undefined {
   const result = spawnSync(command, args, {
     encoding: 'utf8',
-    shell: process.platform === 'win32',
+    cwd: spawnWorkingDirectory(),
+    env: spawnEnv(),
+    shell: spawnShell(),
     windowsHide: true,
     timeout: 15_000,
   })

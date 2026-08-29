@@ -20,6 +20,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { APP_PROFILE, profileDir } from './profile-setup'
 import { DSH_VERSION } from './dsh-service'
+import { spawnEnv, spawnShell, spawnWorkingDirectory } from './spawn-env'
 
 /** Package name of the plugin market, as resolved by `dsh plugin add`. */
 export const MARKET_PACKAGE = 'dshmarket'
@@ -97,14 +98,11 @@ export function installMarket(home?: string, profile: string = APP_PROFILE): Pro
 
   return new Promise<string>((resolve, reject) => {
     const child = spawn(command, args, {
-      cwd: dir,
-      env: {
-        ...process.env,
-        // Let pnpm reach the registry through any proxy configured for the
-        // app's environment; nothing extra to set here.
+      cwd: existsSync(dir) ? dir : spawnWorkingDirectory(),
+      env: spawnEnv({
         DSH_TELEMETRY_DISABLED: '1'
-      },
-      shell: process.platform === 'win32',
+      }),
+      shell: spawnShell(),
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     })
