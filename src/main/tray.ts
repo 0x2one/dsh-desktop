@@ -49,7 +49,7 @@ export function createAppTray(options: AppTrayOptions): AppTray {
 
   const applyMenu = (): void => {
     const profiles = listProfiles()
-    tray.setToolTip(`${PRODUCT_NAME} (${current})`)
+    tray.setToolTip(PRODUCT_NAME)
     const profileItems: Electron.MenuItemConstructorOptions[] = [
       ...profiles.map((name) => ({
         label: name,
