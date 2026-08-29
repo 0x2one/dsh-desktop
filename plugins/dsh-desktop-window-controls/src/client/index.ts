@@ -18,8 +18,11 @@
  *
  * The controls call `window.api.windowControls.*`, exposed by the
  * dsh-desktop preload bridge, which talks to the Electron main process over
- * IPC. No harness source is modified; everything is contributed through the
- * public slot registry plus a scoped stylesheet.
+ * IPC. The plugin may still load from the dsh-desktop profile when the user
+ * runs `dsh --profile dsh-desktop` in a normal browser; `apply` is then a
+ * no-op because that host has no preload bridge. No harness source is
+ * modified; everything is contributed through the public slot registry plus
+ * a scoped stylesheet.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -133,13 +136,29 @@ function ensureTitleBarCss(): void {
 }
 
 /**
+ * Whether this page is the dsh-desktop Electron window.
+ *
+ * The preload bridge (`window.api.windowControls`) is only exposed there.
+ * Console `dsh --profile dsh-desktop` in a system browser has no bridge.
+ */
+function isDesktopHost(): boolean {
+  if (typeof window === 'undefined') return false
+  const api = (window as Window & { api?: { windowControls?: unknown } }).api
+  return api?.windowControls !== undefined
+}
+
+/**
  * Client plugin body: register the window controls and drag strip into
- * shell.overlay and inject the title-bar offset stylesheet. The `inject`
- * wrapper defers registration until the layout plugin declares the seat (it
- * is declared by ui-layout's AppFrame registration).
+ * shell.overlay and inject the title-bar offset stylesheet — but only when
+ * the dsh-desktop preload bridge is present. Console `dsh --profile
+ * dsh-desktop` in a normal browser has no bridge, so this is a no-op: no
+ * overlay, no stylesheet. The `inject` wrapper defers registration until
+ * the layout plugin declares the seat (it is declared by ui-layout's
+ * AppFrame registration).
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  if (!isDesktopHost()) return
   ensureTitleBarCss()
   ctx.slots.inject(
     'shell.overlay',

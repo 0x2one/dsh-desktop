@@ -391,7 +391,13 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [cla
     }
     tag.textContent = titleBarCss;
   }
+  function isDesktopHost() {
+    if (typeof window === "undefined") return false;
+    const api = window.api;
+    return api?.windowControls !== void 0;
+  }
   function apply(ctx) {
+    if (!isDesktopHost()) return;
     ensureTitleBarCss();
     ctx.slots.inject(
       "shell.overlay",

@@ -1,7 +1,12 @@
 /**
  * Browser-side verification: boots dsh web (temp DSH_HOME, plugin injected),
- * opens the page in the installed chromium, and asserts the window-controls
- * plugin actually rendered into the shell.overlay seat.
+ * opens the page in the installed chromium, and asserts:
+ *
+ * 1. Without the dsh-desktop preload bridge, the plugin is a no-op (no
+ *    toolbar, no title-bar stylesheet) — the console `dsh --profile
+ *    dsh-desktop` case.
+ * 2. With a stubbed preload, the window-controls plugin renders into the
+ *    shell.overlay seat and routes button clicks to the bridge.
  *
  * Run: node scripts/verify-plugin-browser.mjs
  */
@@ -85,6 +90,23 @@ try {
     headless: true,
     args: ['--no-sandbox'],
   })
+
+  // --- CLI host: no preload bridge, plugin must no-op ---
+  const cliPage = await browser.newPage()
+  await cliPage.goto(boot.url, { waitUntil: 'load', timeout: 120_000 })
+  try {
+    await cliPage.locator('div:has(> [data-shell-overlay])').waitFor({ state: 'attached', timeout: 60_000 })
+  } catch {
+    // fall through to the assertions below
+  }
+  await cliPage.waitForTimeout(1500)
+  const cliToolbar = await cliPage.getByRole('toolbar', { name: 'Window controls' }).count()
+  const cliCss = await cliPage.locator('style[data-dsh-css="dsh-desktop-title-bar"]').count()
+  console.log(`cli toolbar visible: ${cliToolbar > 0}`)
+  console.log(`cli title-bar css: ${cliCss > 0}`)
+  await cliPage.close()
+
+  // --- desktop host: stub the preload bridge so the plugin renders ---
   const page = await browser.newPage()
   // Simulate the dsh-desktop preload bridge: in a real Electron window the
   // preload exposes window.api.windowControls; here we stub it so the plugin
@@ -152,12 +174,15 @@ try {
   console.log(`plugin-related console errors: ${relevantErrors.length}`)
   if (relevantErrors.length > 0) console.log(relevantErrors.join('\n'))
 
-  if (visible === 0 || minimize === 0 || maximize === 0 || close === 0
+  if (cliToolbar > 0 || cliCss > 0) {
+    console.error('FAIL: window controls took effect without the desktop preload')
+    process.exitCode = 1
+  } else if (visible === 0 || minimize === 0 || maximize === 0 || close === 0
     || !minimizeCalled || !closeCalled || !maximizeToggled) {
     console.error('FAIL: window controls did not render or route correctly')
     process.exitCode = 1
   } else {
-    console.log('PASS: window controls rendered and routed to the bridge')
+    console.log('PASS: CLI no-op; desktop host rendered and routed to the bridge')
   }
 } catch (error) {
   console.error(`FAIL: ${error.message}`)
