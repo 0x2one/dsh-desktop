@@ -81,9 +81,7 @@ Harness 必须作为独立 Node 子进程运行：它的 bash/pwsh 工具依赖 
 
 ## 发版
 
-Windows 安装包由 GitHub Actions 构建，发布到本仓库 GitHub Releases。已安装客户端通过 `electron-updater` 检查同一仓库的 Release（`latest.yml` + NSIS）。
-
-**CI**：推送到 `master` 或打开 PR 时，[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 在 `windows-latest` 上执行 `pnpm build` 并打包 NSIS（`--publish never`），产物作为 workflow artifact，不创建 Release。
+Windows 安装包只在打版本标签时由 GitHub Actions 构建，发布到本仓库 GitHub Releases。推送或 PR 不会打包。已安装客户端通过 `electron-updater` 检查同一仓库的 Release（`latest.yml` + NSIS）。
 
 **发版步骤**：
 
@@ -97,7 +95,7 @@ git push origin v1.0.1
 
 3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 构建 Windows NSIS，并以 `release`（非草稿）发布到 GitHub Releases。
 
-CI 设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败。
+构建时设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败。
 
 ## License
 
