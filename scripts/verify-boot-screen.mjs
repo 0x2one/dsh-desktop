@@ -91,7 +91,7 @@ checks.stackCentered = Boolean(
 )
 
 const title = await page.locator('h1.boot-title').textContent()
-checks.titleText = (title ?? '').replace(/\s+/g, ' ').trim() === 'DeepSeek Harness'
+checks.titleText = (title ?? '').replace(/\s+/g, ' ').trim() === 'DeepSeek Harness Desktop'
 checks.titleVisible = await page.locator('h1.boot-title').isVisible()
 
 checks.statusLine = await page.locator('.boot-line').first().isVisible()

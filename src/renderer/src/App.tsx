@@ -30,7 +30,7 @@ function App(): React.JSX.Element {
 
       <div className="boot-stack">
         <Logo className="boot-logo" />
-        <h1 className="boot-title">DeepSeek Harness</h1>
+        <h1 className="boot-title">DeepSeek Harness Desktop</h1>
         <section className="boot-status" aria-live="polite">
           {failed ? (
             <div className="boot-error">

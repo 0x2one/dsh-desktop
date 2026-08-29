@@ -1,5 +1,5 @@
 appId: com.dsh.desktop
-productName: dsh-desktop
+productName: DeepSeek Harness Desktop
 directories:
   buildResources: build
 files:

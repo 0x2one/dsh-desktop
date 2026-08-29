@@ -11,6 +11,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
+import { PRODUCT_NAME } from './app-name'
 
 /** Minimum Node.js major that @deepseek-ai/dsh 0.1.1-rc.2 accepts. */
 export const MIN_NODE_MAJOR = 22
@@ -73,7 +74,7 @@ export function checkRuntimeRequirements(): RuntimeRequirements {
   if (nodeRaw === undefined) {
     missing.push('node')
     guidance.push(
-      'Node.js is not installed or is not on PATH. Install Node.js 22.19+ (or 24+) from https://nodejs.org/, then restart dsh-desktop.',
+      `Node.js is not installed or is not on PATH. Install Node.js 22.19+ (or 24+) from https://nodejs.org/, then restart ${PRODUCT_NAME}.`,
     )
   } else {
     nodeVersion = nodeRaw
@@ -81,7 +82,7 @@ export function checkRuntimeRequirements(): RuntimeRequirements {
     if (parsed === undefined || !satisfiesNodeEngines(parsed)) {
       missing.push('node')
       guidance.push(
-        `Node.js ${nodeRaw} is installed but too old for deepseek-harness. Install Node.js 22.19+ (or 24+) from https://nodejs.org/, then restart dsh-desktop.`,
+        `Node.js ${nodeRaw} is installed but too old for deepseek-harness. Install Node.js 22.19+ (or 24+) from https://nodejs.org/, then restart ${PRODUCT_NAME}.`,
       )
     }
   }
@@ -90,7 +91,7 @@ export function checkRuntimeRequirements(): RuntimeRequirements {
   if (pnpmRaw === undefined) {
     missing.push('pnpm')
     guidance.push(
-      'pnpm is not installed or is not on PATH. Install it with `npm install -g pnpm`, then restart dsh-desktop.',
+      `pnpm is not installed or is not on PATH. Install it with \`npm install -g pnpm\`, then restart ${PRODUCT_NAME}.`,
     )
   } else {
     pnpmVersion = pnpmRaw

@@ -1,7 +1,8 @@
 {
   "name": "dsh-desktop",
+  "productName": "DeepSeek Harness Desktop",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "DeepSeek Harness Desktop — embed dsh web in a frameless Electron window",
   "main": "./out/main/index.js",
   "author": "0x2one",
   "license": "MIT",

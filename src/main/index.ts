@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { PRODUCT_NAME } from './app-name'
 import { checkRuntimeRequirements } from './requirements'
 import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
@@ -154,6 +155,7 @@ if (!gotTheLock) {
       autoHideMenuBar: true,
       frame: false,
       ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden' as const } : {}),
+      title: PRODUCT_NAME,
       icon,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
@@ -287,6 +289,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.dsh.desktop')
+    app.setName(PRODUCT_NAME)
 
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.
@@ -304,7 +307,7 @@ if (!gotTheLock) {
       void dialog.showMessageBox({
         type: 'warning',
         title: 'Missing runtime requirements',
-        message: 'dsh-desktop could not start the DeepSeek Harness service',
+        message: `${PRODUCT_NAME} could not start the DeepSeek Harness service`,
         detail,
         buttons: ['OK']
       })

@@ -1,4 +1,4 @@
-# dsh-desktop
+# DeepSeek Harness Desktop
 
 DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepseek-ai/deepseek-harness) 嵌进无边框 Electron 窗口，不改 harness 源码。
 

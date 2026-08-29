@@ -10,6 +10,7 @@
  */
 
 import { Menu, Tray, type NativeImage } from 'electron'
+import { PRODUCT_NAME } from './app-name'
 import { listProfiles } from './profile-pref'
 
 /** Callbacks and initial state the tray menu uses. */
@@ -48,7 +49,7 @@ export function createAppTray(options: AppTrayOptions): AppTray {
 
   const applyMenu = (): void => {
     const profiles = listProfiles()
-    tray.setToolTip(`dsh-desktop (${current})`)
+    tray.setToolTip(`${PRODUCT_NAME} (${current})`)
     const profileItems: Electron.MenuItemConstructorOptions[] = [
       ...profiles.map((name) => ({
         label: name,
