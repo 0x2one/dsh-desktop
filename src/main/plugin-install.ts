@@ -27,6 +27,17 @@ export const WINDOW_CONTROLS_PACKAGE = '@dsh-desktop/window-controls'
 /** Loader entry id for the window-controls plugin. */
 export const WINDOW_CONTROLS_ENTRY_ID = 'dsh-desktop-window-controls'
 
+/**
+ * Env flag set only when the Electron app spawns `dsh web`. Console
+ * `dsh --profile dsh-desktop` does not set it, so the loader disables this
+ * entry and the client bundle never enters `__DSH_BOOT__` (no title-bar CSS,
+ * Session log stays in its stock position).
+ */
+export const DSH_DESKTOP_ENV = 'DSH_DESKTOP'
+
+/** `!!js` expression: disable unless the Electron app set {@link DSH_DESKTOP_ENV}. */
+const WINDOW_CONTROLS_DISABLED_JS = `process.env.${DSH_DESKTOP_ENV} !== '1'`
+
 /** Relative package path inside the built plugins tree. */
 const WINDOW_CONTROLS_REL = join('dsh-desktop-window-controls')
 
@@ -109,18 +120,34 @@ function windowControlsPatchBlock(): string {
   return `- insert:
     - id: ${WINDOW_CONTROLS_ENTRY_ID}
       name: '${WINDOW_CONTROLS_PACKAGE}'
+      disabled: !!js ${WINDOW_CONTROLS_DISABLED_JS}
 `
+}
+
+/**
+ * If an older insert block lacks the desktop-only `disabled` expression,
+ * append it. Leaves already-upgraded (or hand-edited) rows alone.
+ */
+function withDesktopOnlyDisabled(content: string): string {
+  if (content.includes(WINDOW_CONTROLS_DISABLED_JS)) return content
+  const escapedPkg = WINDOW_CONTROLS_PACKAGE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(
+    `(-\\s*id:\\s*${WINDOW_CONTROLS_ENTRY_ID}\\r?\\n\\s*name:\\s*['"]${escapedPkg}['"])`
+  )
+  if (!pattern.test(content)) return content
+  return content.replace(pattern, `$1\n      disabled: !!js ${WINDOW_CONTROLS_DISABLED_JS}`)
 }
 
 /**
  * Append the window-controls loader entry to the app profile's user patch
  * layer (`cordis.patch.yml`). The file is a top-level YAML array; appending a
  * top-level `- insert:` block is a valid additional element. Idempotent: an
- * existing entry (or any mention of the entry id) is left untouched, and user
- * content is preserved. The harness template ships `[]` as the (empty) array
- * body — a `[]` that closes the document cannot coexist with a following
- * `- insert:` in one YAML stream, so a trailing `[]` is replaced by the
- * insert block (comments before it are kept).
+ * existing entry is left in place (and upgraded with the desktop-only
+ * `disabled` expression when missing), and user content is preserved. The
+ * harness template ships `[]` as the (empty) array body — a `[]` that closes
+ * the document cannot coexist with a following `- insert:` in one YAML
+ * stream, so a trailing `[]` is replaced by the insert block (comments
+ * before it are kept).
  * @param home - the harness home.
  * @returns true when the patch now contains the entry (whether just written or already present).
  */
@@ -133,7 +160,13 @@ export function ensureWindowControlsPatch(home: string = defaultDshHome()): bool
     content = ''
   }
 
-  if (content.includes(WINDOW_CONTROLS_ENTRY_ID)) return true
+  if (content.includes(WINDOW_CONTROLS_ENTRY_ID)) {
+    const upgraded = withDesktopOnlyDisabled(content)
+    if (upgraded !== content) {
+      writeFileSync(patchPath, upgraded, 'utf8')
+    }
+    return true
+  }
 
   // A trailing empty-array document (the harness template's `[]`), possibly
   // after comment lines, is replaced by the insert block. Anything else —
