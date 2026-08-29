@@ -8,6 +8,7 @@ import { registerWindowControls } from './window-controls'
 import { ensurePluginsInstalled, waitForPluginInGraph } from './plugin-install'
 import { prepareAppProfile, appProfileDir } from './profile-setup'
 import { ensureMarketInstalled } from './plugin-market'
+import { createAppTray } from './tray'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -24,14 +25,20 @@ if (!gotTheLock) {
   let mainWindow: BrowserWindow | null = null
   let dshService: DshService | null = null
   let quitRequested = false
+  let disposeTray: (() => void) | null = null
   // Set during app.whenReady before any window/service starts; a false value
   // means the app profile could not be initialized, so dsh must not boot.
   let profileReady = true
 
-  app.on('second-instance', () => {
-    if (mainWindow === null) return
+  function showMainWindow(): void {
+    if (mainWindow === null || mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
+    if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
+  }
+
+  app.on('second-instance', () => {
+    showMainWindow()
   })
 
   function createWindow(): void {
@@ -57,6 +64,13 @@ if (!gotTheLock) {
     const window = mainWindow
     window.on('ready-to-show', () => {
       window.show()
+    })
+
+    // Close hides to the tray unless the user chose 退出 (app.quit).
+    window.on('close', (event) => {
+      if (quitRequested) return
+      event.preventDefault()
+      window.hide()
     })
 
     window.webContents.setWindowOpenHandler((details) => {
@@ -212,6 +226,14 @@ if (!gotTheLock) {
 
     createWindow()
 
+    disposeTray = createAppTray({
+      icon,
+      onShow: showMainWindow,
+      onQuit: () => {
+        app.quit()
+      }
+    })
+
     if (!profileReady) {
       void dialog.showMessageBox({
         type: 'error',
@@ -223,26 +245,27 @@ if (!gotTheLock) {
     }
 
     app.on('activate', function () {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      // On macOS, dock click should restore a hidden window rather than
+      // spawning a second one. Recreate only when the window is gone.
+      if (mainWindow !== null && !mainWindow.isDestroyed()) {
+        showMainWindow()
+      } else if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow()
+      }
     })
   })
 
   // Stop the embedded dsh service before quitting.
   app.on('before-quit', () => {
     quitRequested = true
+    disposeTray?.()
+    disposeTray = null
     void dshService?.stop()
   })
 
-  // Quit when all windows are closed, except on macOS. There, it's common
-  // for applications and their menu bar to stay active until the user quits
-  // explicitly with Cmd + Q.
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit()
-    }
-  })
+  // Keep the process (and tray) alive when windows are closed. Actual quit is
+  // driven by the tray "退出" item via app.quit().
+  app.on('window-all-closed', () => {})
 }
 
 // In this file you can include the rest of your app's specific main process
