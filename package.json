@@ -10,6 +10,7 @@
     "type": "git",
     "url": "https://github.com/0x2one/dsh-desktop.git"
   },
+  "packageManager": "pnpm@11.21.0",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",

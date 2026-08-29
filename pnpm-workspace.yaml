@@ -2,3 +2,9 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+# app-builder-lib 26.x reads ElectronDownloadCacheMode.ReadWrite from
+# @electron/get (added in v5), but its declared range (^3.0.0) resolves to
+# 3.0.0, which does not export the enum. Packaging then dies with
+# "Cannot read properties of undefined (reading 'ReadWrite')".
+overrides:
+  '@electron/get': 5.0.0
