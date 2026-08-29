@@ -18,6 +18,7 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process'
+import { statSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { app } from 'electron'
 import { APP_PROFILE, prepareAppProfile } from './profile-setup'
@@ -31,6 +32,22 @@ const READY_TIMEOUT_MS = 180_000
 
 /** The readiness line the web-app bundle prints once the server binds. */
 const READY_LINE = /dsh web: (http:\/\/127\.0\.0\.1:\d+)/
+
+/**
+ * Working directory for the npx child. `app.getAppPath()` is a real folder in
+ * development, but a packaged electron-builder build points it at `app.asar`
+ * (a file). libuv cannot chdir into that path and reports
+ * `spawn ...\cmd.exe ENOENT` when `shell: true` on Windows.
+ */
+function spawnWorkingDirectory(): string {
+  const appPath = app.getAppPath()
+  try {
+    if (statSync(appPath).isDirectory()) return appPath
+  } catch {
+    // Packaged asar path is not a directory; fall through.
+  }
+  return process.resourcesPath
+}
 
 /** Lifecycle of the embedded service process. */
 export type DshServiceState = 'stopped' | 'starting' | 'running' | 'stopping' | 'failed'
@@ -120,7 +137,7 @@ export class DshService {
       '0'
     ]
     const child = spawn(command, args, {
-      cwd: app.getAppPath(),
+      cwd: spawnWorkingDirectory(),
       env: {
         ...process.env,
         // Telemetry opt-out: ANY non-empty value disables (documented switch).
