@@ -21,12 +21,16 @@ extraResources:
     to: plugins/dsh-desktop-window-controls/package.json
 win:
   executableName: dsh-desktop
+  # PNG is the source of truth (same whale as resources/icon.png / pnpm dev).
+  # Default would be build/icon.ico, which can lag behind after the template icon is replaced.
+  icon: icon.png
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  icon: icon.png
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -37,6 +41,7 @@ mac:
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
+  icon: icon.png
   target:
     - AppImage
     - snap
