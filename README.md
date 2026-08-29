@@ -93,7 +93,7 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 构建 Windows NSIS，并以 `release`（非草稿）发布到 GitHub Releases。
+3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 先建一条草稿 Release，再构建 Windows NSIS 并上传产物，最后把草稿改为正式发布。这样 exe / `latest.yml` / `.blockmap` 会挂在同一条 Release 上。
 
 构建时设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败。
 
