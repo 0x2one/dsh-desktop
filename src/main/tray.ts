@@ -3,8 +3,8 @@
  *
  * The tray keeps the app alive after the main window is hidden. Close-vs-hide
  * lives on the BrowserWindow `close` handler; this module owns the icon, the
- * context menu (show / profile radio list / quit), and a refresh hook so the
- * menu can rescan `~/.dsh/profiles/` on each right-click.
+ * context menu (show / profile list / 检查更新 / quit), and a refresh hook so
+ * the menu can rescan `~/.dsh/profiles/` on each right-click.
  *
  * @module dsh-desktop/tray
  */
@@ -26,6 +26,8 @@ export interface AppTrayOptions {
   onSelectProfile: (name: string) => void
   /** User chose 新增环境. */
   onCreateProfile: () => void
+  /** User chose 检查更新. */
+  onCheckUpdate: () => void
 }
 
 /** Live tray handle: refresh the menu after a profile switch, destroy on quit. */
@@ -65,6 +67,8 @@ export function createAppTray(options: AppTrayOptions): AppTray {
         { label: '显示窗口', click: options.onShow },
         { type: 'separator' },
         { label: '启动环境', submenu: profileItems },
+        { type: 'separator' },
+        { label: '检查更新…', click: options.onCheckUpdate },
         { type: 'separator' },
         { label: '退出', click: options.onQuit }
       ])

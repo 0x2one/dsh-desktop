@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: com.dsh.desktop
 productName: dsh-desktop
 directories:
   buildResources: build
@@ -9,6 +9,7 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!.github/**'
 asarUnpack:
   - resources/**
 extraResources:
@@ -46,5 +47,7 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: 0x2one
+  repo: dsh-desktop
+  releaseType: release

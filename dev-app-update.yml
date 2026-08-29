@@ -1,3 +1,4 @@
-provider: generic
-url: https://example.com/auto-updates
+provider: github
+owner: 0x2one
+repo: dsh-desktop
 updaterCacheDirName: dsh-desktop-updater

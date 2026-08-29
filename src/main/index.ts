@@ -17,6 +17,7 @@ import { ensureMarketInstalled } from './plugin-market'
 import { createAppTray, type AppTray } from './tray'
 import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
 import { promptProfileName } from './profile-prompt'
+import { startAutoUpdater, type AppUpdater } from './updater'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -34,6 +35,7 @@ if (!gotTheLock) {
   let dshService: DshService | null = null
   let quitRequested = false
   let appTray: AppTray | null = null
+  let appUpdater: AppUpdater | null = null
   let activeProfile = APP_PROFILE
   let switchingProfile = false
   // Set during app.whenReady before any window/service starts; a false value
@@ -334,12 +336,32 @@ if (!gotTheLock) {
       onCreateProfile: () => {
         void createNewProfile()
       },
+      onCheckUpdate: () => {
+        if (appUpdater === null) {
+          void dialog.showMessageBox({
+            type: 'info',
+            title: '检查更新',
+            message: '开发模式下不检查更新',
+            detail: '自动更新仅在安装包中启用。',
+            buttons: ['OK']
+          })
+          return
+        }
+        appUpdater.checkForUpdates()
+      },
       onQuit: () => {
         app.quit()
       }
     })
 
     createWindow()
+
+    appUpdater = startAutoUpdater({
+      getWindow: () => mainWindow,
+      onWillInstall: () => {
+        quitRequested = true
+      }
+    })
 
     if (!profileReady) {
       void dialog.showMessageBox({
