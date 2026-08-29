@@ -20,14 +20,15 @@ extraResources:
   - from: plugins/dsh-desktop-window-controls/package.json
     to: plugins/dsh-desktop-window-controls/package.json
 win:
-  executableName: dsh-desktop
+  # Process image, Task Manager, and the install folder all use this name.
+  executableName: DeepSeek Harness Desktop
   # PNG is the source of truth (same whale as resources/icon.png / pnpm dev).
   # Default would be build/icon.ico, which can lag behind after the template icon is replaced.
   icon: icon.png
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
+  shortcutName: DeepSeek Harness Desktop
+  uninstallDisplayName: DeepSeek Harness Desktop
   createDesktopShortcut: always
 mac:
   icon: icon.png
