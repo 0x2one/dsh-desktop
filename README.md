@@ -115,7 +115,8 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 先建一条草稿 Release，再并行构建 Windows、macOS Intel、macOS Apple Silicon，产物都上传到同一条草稿，全部成功后再改为正式发布。
+3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 先建一条草稿 Release，再并行构建 Windows、macOS Intel、macOS Apple Silicon，产物上传到同一条草稿。CI **不会**自动发布。
+4. 构建成功后，在 GitHub Releases 把对应草稿改为正式发布（`electron-updater` 只读已发布的 Release）。发版前先在 [`CHANGELOG.md`](CHANGELOG.md) 写好该版本记录。
 
 构建时设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败（产物未签名）。若要启用 macOS 签名与公证，需要配置 `CSC_LINK`/`CSC_KEY_PASSWORD` 与 `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` secrets，并把 `electron-builder.yml` 的 `mac.notarize` 改为 `true`。
 

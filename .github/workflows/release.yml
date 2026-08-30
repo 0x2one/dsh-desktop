@@ -55,18 +55,8 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Package and publish (${{ matrix.platform }})
+      - name: Package and upload (${{ matrix.platform }})
         run: pnpm exec electron-builder ${{ matrix.target }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-
-  publish-release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: gh release edit "${{ github.ref_name }}" --draft=false

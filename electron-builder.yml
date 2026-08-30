@@ -62,6 +62,6 @@ publish:
   provider: github
   owner: 0x2one
   repo: dsh-desktop
-  # Draft so concurrent exe / latest.yml / blockmap uploads attach to one
-  # release. The workflow publishes it after electron-builder finishes.
+  # Draft so concurrent artifact uploads attach to one GitHub Release.
+  # Publish the draft by hand after CI finishes (electron-updater ignores drafts).
   releaseType: draft
