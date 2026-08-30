@@ -30,6 +30,11 @@ nsis:
   shortcutName: DeepSeek Harness Desktop
   uninstallDisplayName: DeepSeek Harness Desktop
   createDesktopShortcut: always
+  # One-click wizard is always light (#FFFFFF). App icon is a white whale
+  # for the taskbar, so the installer uses a black mark instead.
+  installerHeaderIcon: installerHeaderIcon.ico
+  installerIcon: installerHeaderIcon.ico
+  uninstallerIcon: installerHeaderIcon.ico
 mac:
   icon: icon.png
   category: public.app-category.developer-tools
