@@ -177,9 +177,17 @@ if (!gotTheLock) {
       window.show()
     })
 
-    // Close hides to the tray unless the user chose 退出 (app.quit).
+    // Close hides to the tray unless the user chose 退出 (app.quit), or the
+    // window is already hidden — a second close (NSIS WM_CLOSE / Stop-Process
+    // while the app is in the tray) must actually quit or the installer keeps
+    // seeing DeepSeek Harness Desktop.exe and shows "无法关闭".
     window.on('close', (event) => {
       if (quitRequested) return
+      if (!window.isVisible()) {
+        quitRequested = true
+        app.quit()
+        return
+      }
       event.preventDefault()
       window.hide()
     })
@@ -405,12 +413,24 @@ if (!gotTheLock) {
     })
   })
 
-  // Stop the embedded dsh service before quitting.
-  app.on('before-quit', () => {
+  // Stop the embedded dsh service before quitting. Must await the tree kill —
+  // otherwise Electron exits while npx/node is still alive, or the event
+  // loop stays up on the child's handles, and NSIS still sees the app.
+  let serviceStopping = false
+  app.on('before-quit', (event) => {
     quitRequested = true
     appTray?.destroy()
     appTray = null
-    void dshService?.stop()
+    if (serviceStopping || dshService === null) return
+    event.preventDefault()
+    serviceStopping = true
+    const service = dshService
+    const timeout = new Promise<void>((resolve) => {
+      setTimeout(resolve, 5000)
+    })
+    void Promise.race([service.stop(), timeout]).finally(() => {
+      app.quit()
+    })
   })
 
   // Keep the process (and tray) alive when windows are closed. Actual quit is
