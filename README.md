@@ -7,8 +7,9 @@ DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepsee
 ## 功能
 
 - 嵌入固定版本 `@deepseek-ai/dsh@0.1.1-rc.2`（`npx` 子进程，独立 Node ABI，不打进 Electron）
-- 无边框窗口：内容栏右上角自定义最小化 / 最大化 / 关闭；会话区顶部可拖动
-- 系统托盘：关闭窗口隐藏到托盘，托盘可切换 / 新建 harness 环境
+- 无边框窗口：Windows/Linux 内容栏右上角自定义最小化 / 最大化 / 关闭；macOS 保留系统红绿灯，不重复渲染自定义按钮；会话区顶部可拖动
+- 系统托盘：关闭窗口隐藏到托盘，托盘可切换 / 新建 harness 环境（macOS 菜单栏模板图标，自动适配明暗模式）
+- macOS 应用菜单与快捷键：Cmd+Q 退出、Cmd+C/V/X/A 编辑、全屏等（仅 macOS）
 - 首次启动自动安装 `dshmarket` 插件市场（装进当前 profile，不碰用户 `web` profile）
 - 启动时检查 Node.js / pnpm，缺失或版本不足会弹窗提示
 - 打包版通过 GitHub Releases 自动更新（`electron-updater`）
@@ -61,12 +62,29 @@ pnpm dev
 
 ```bash
 pnpm build          # 插件 + typecheck + electron-vite
-pnpm build:win      # Windows NSIS
-pnpm build:mac
-pnpm build:linux
+pnpm build:win      # Windows NSIS（需在 Windows 上执行）
+pnpm build:mac      # macOS dmg + zip（需在 macOS 上执行）
+pnpm build:linux    # Linux AppImage/snap/deb（需在 Linux 上执行）
 ```
 
-端到端验证脚本使用临时 `DSH_HOME`，不会污染真实用户数据。细节与目录说明见 [INTEGRATION.md](INTEGRATION.md)。
+`electron-builder` 不能在非目标平台上交叉打包：Windows 上跑 `build:mac`/`build:linux` 会报错，macOS 产物由 CI（macOS runner）构建。
+
+端到端验证脚本使用临时 `DSH_HOME`，不会污染真实用户数据：
+
+```bash
+node scripts/verify-plugin-injection.mjs
+node scripts/verify-injection-timing.mjs
+node scripts/verify-profile-setup.mjs
+node scripts/verify-plugin-browser.mjs   # 需要 playwright chromium
+```
+
+`verify-plugin-browser.mjs` 会启动 headless chromium 验证窗口控制插件在浏览器端的渲染与 IPC 路由。首次运行前安装匹配的浏览器（`playwright-core` 的 chromium revision 由脚本自动解析）：
+
+```bash
+node node_modules/playwright-core/cli.js install chromium
+```
+
+细节与目录说明见 [INTEGRATION.md](INTEGRATION.md)。
 
 ## 架构
 
@@ -75,7 +93,8 @@ Electron 主进程          dsh web（独立 Node 子进程）
   环境检查 / 托盘          npx @deepseek-ai/dsh@0.1.1-rc.2
   专属 profile             --profile <当前环境> --no-open --port 0
   注入窗口操作栏插件  →    cordis 插件 → 内容栏右上角操作栏
-  IPC 最小化/最大化/关闭   window.api.windowControls
+  IPC 最小化/最大化/关闭   window.api.windowControls（Windows/Linux）
+  macOS 红绿灯 + 应用菜单  trafficLightPosition / Menu roles（darwin 分支）
 ```
 
 Harness 必须作为独立 Node 子进程运行：它的 bash/pwsh 工具依赖 `node-pty`，若打进 Electron，electron-builder 会按 Electron ABI 重建原生模块，导致 ABI 不匹配。桌面侧优化全部通过公开 cordis slot 完成，不修改 deepseek-harness。
