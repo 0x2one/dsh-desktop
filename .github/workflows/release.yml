@@ -45,12 +45,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: gh release edit "${{ github.ref_name }}" --draft=false
-
   release-macos:
     # Apple Silicon runner builds arm64 natively; x64 is cross-compiled by
     # electron-builder from the same run.
@@ -72,7 +66,7 @@ jobs:
         run: pnpm build
 
       # Uploads attach to the same draft the Windows job created (or this job
-      # creates if the Windows job failed); the Windows job flips it live.
+      # creates if Windows has not yet). A later job publishes the draft.
       - name: Ensure draft GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,3 +83,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+  publish-release:
+    needs: [release-windows, release-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false
