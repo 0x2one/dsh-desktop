@@ -45,7 +45,8 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  # Include ${arch} so --x64 and --arm64 do not overwrite the same filename.
+  artifactName: ${name}-${version}-${arch}.${ext}
 linux:
   icon: icon.png
   target:

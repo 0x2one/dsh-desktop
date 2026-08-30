@@ -33,7 +33,7 @@ Windows 是主要目标平台，macOS 也受支持：红绿灯窗口控制（不
 从 [GitHub Releases](https://github.com/0x2one/dsh-desktop/releases) 下载对应平台的产物：
 
 - **Windows**：`dsh-desktop-<version>-setup.exe`
-- **macOS**：`dsh-desktop-<version>.dmg`（Intel `-x64` 与 Apple Silicon `-arm64` 两个架构）
+- **macOS**：`dsh-desktop-<version>-x64.dmg`（Intel）与 `dsh-desktop-<version>-arm64.dmg`（Apple Silicon）
 
 macOS 产物未签名未公证，首次打开时系统会拦截：在 Finder 中右键应用图标 →「打开」，或到「系统设置 → 隐私与安全性」点击「仍要打开」。安装后启动数秒会静默检查更新；发现新版本时弹出对话框，确认后下载。下载完成可立即重启安装，或等到托盘「退出」时安装。也可随时用托盘菜单「检查更新…」手动检查。`pnpm dev` 开发模式不访问更新源。
 
