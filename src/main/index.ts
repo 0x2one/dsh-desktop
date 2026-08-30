@@ -19,6 +19,7 @@ import { createAppTray, type AppTray } from './tray'
 import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
 import { promptProfileName } from './profile-prompt'
 import { startAutoUpdater, type AppUpdater } from './updater'
+import { closeUpdateWindow } from './update-window'
 import { installAppMenu } from './menu'
 
 // Point the plugin installer at the built plugin tree. In development this is
@@ -366,17 +367,7 @@ if (!gotTheLock) {
         void createNewProfile()
       },
       onCheckUpdate: () => {
-        if (appUpdater === null) {
-          void dialog.showMessageBox({
-            type: 'info',
-            title: '检查更新',
-            message: '开发模式下不检查更新',
-            detail: '自动更新仅在安装包中启用。',
-            buttons: ['OK']
-          })
-          return
-        }
-        appUpdater.checkForUpdates()
+        appUpdater?.checkForUpdates()
       },
       onQuit: () => {
         app.quit()
@@ -421,6 +412,7 @@ if (!gotTheLock) {
     quitRequested = true
     appTray?.destroy()
     appTray = null
+    closeUpdateWindow()
     if (serviceStopping || dshService === null) return
     event.preventDefault()
     serviceStopping = true

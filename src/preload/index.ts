@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { UPDATE_CHANNELS, type UpdateState, type UpdaterApi } from './update-api'
 
 // Tag the document with the platform before the page renders: the window
 // controls plugin branches on `html[data-platform]` CSS and the preload
@@ -39,7 +40,31 @@ const api = {
         ipcRenderer.removeListener('window:maximized-changed', listener)
       }
     }
-  }
+  },
+  updater: {
+    onState: (callback: (state: UpdateState) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, state: UpdateState): void => {
+        callback(state)
+      }
+      ipcRenderer.on(UPDATE_CHANNELS.state, listener)
+      return () => {
+        ipcRenderer.removeListener(UPDATE_CHANNELS.state, listener)
+      }
+    },
+    getState: (): Promise<UpdateState | null> => ipcRenderer.invoke(UPDATE_CHANNELS.getState),
+    download: (): void => {
+      ipcRenderer.send(UPDATE_CHANNELS.download)
+    },
+    installNow: (): void => {
+      ipcRenderer.send(UPDATE_CHANNELS.installNow)
+    },
+    installLater: (): void => {
+      ipcRenderer.send(UPDATE_CHANNELS.installLater)
+    },
+    dismiss: (): void => {
+      ipcRenderer.send(UPDATE_CHANNELS.dismiss)
+    }
+  } satisfies UpdaterApi
 }
 
 export type WindowControlsApi = typeof api
