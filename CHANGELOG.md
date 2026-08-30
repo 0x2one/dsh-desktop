@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+---
+
+## v1.0.2
+
+macOS 双架构原生构建与发版流程修正。
+
 ### Fixes
 
 - macOS Intel 与 Apple Silicon 改为在对应 runner 上分别原生构建（`macos-15-intel` / `macos-15`），不再在 Apple Silicon 上交叉编译 x64
