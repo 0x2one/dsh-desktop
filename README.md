@@ -33,7 +33,7 @@ Windows 是主要目标平台，macOS 也受支持：红绿灯窗口控制（不
 从 [GitHub Releases](https://github.com/0x2one/dsh-desktop/releases) 下载对应平台的产物：
 
 - **Windows**：`dsh-desktop-<version>-setup.exe`
-- **macOS**：`dsh-desktop-<version>-x64.dmg`（Intel）与 `dsh-desktop-<version>-arm64.dmg`（Apple Silicon）
+- **macOS**：`dsh-desktop-<version>-mac-x64.dmg`（Intel）与 `dsh-desktop-<version>-mac-arm64.dmg`（Apple Silicon）
 
 macOS 产物未签名未公证，首次打开时系统会拦截：在 Finder 中右键应用图标 →「打开」，或到「系统设置 → 隐私与安全性」点击「仍要打开」。安装后启动数秒会静默检查更新；发现新版本时弹出对话框，确认后下载。下载完成可立即重启安装，或等到托盘「退出」时安装。也可随时用托盘菜单「检查更新…」手动检查。`pnpm dev` 开发模式不访问更新源。
 
@@ -67,7 +67,7 @@ pnpm build:mac      # macOS dmg + zip（需在 macOS 上执行）
 pnpm build:linux    # Linux AppImage/snap/deb（需在 Linux 上执行）
 ```
 
-`electron-builder` 不能在非目标平台上交叉打包：Windows 上跑 `build:mac`/`build:linux` 会报错，macOS 产物由 CI（macOS runner）构建。
+`electron-builder` 不能在非目标平台上交叉打包：Windows 上跑 `build:mac`/`build:linux` 会报错。CI 在 Intel 与 Apple Silicon 两台 macOS runner 上分别原生构建对应架构。
 
 端到端验证脚本使用临时 `DSH_HOME`，不会污染真实用户数据：
 
@@ -103,7 +103,7 @@ Harness 必须作为独立 Node 子进程运行：它的 bash/pwsh 工具依赖 
 
 ## 发版
 
-Windows NSIS 安装包与 macOS dmg/zip 在打版本标签时由 GitHub Actions 并行构建，发布到本仓库 GitHub Releases。推送或 PR 不会打包。已安装客户端通过 `electron-updater` 检查同一仓库的 Release（Windows 用 `latest.yml` + NSIS，macOS 用 `latest-mac.yml` + zip）。macOS job 在 Apple Silicon runner 上原生构建 `arm64`，并交叉编译 `x64`。
+Windows NSIS 安装包与 macOS dmg/zip 在打版本标签时由 GitHub Actions 并行构建，发布到本仓库 GitHub Releases。推送或 PR 不会打包。已安装客户端通过 `electron-updater` 检查同一仓库的 Release（Windows 用 `latest.yml` + NSIS，macOS 用 `latest-mac.yml` + zip）。macOS Intel 在 `macos-15-intel` 上原生构建 `x64`，Apple Silicon 在 `macos-15` 上原生构建 `arm64`（不交叉编译）。
 
 **发版步骤**：
 
@@ -115,7 +115,7 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 先建一条草稿 Release，Windows 与 macOS 两个 job 并行把产物上传到同一条草稿，两边都结束后再改为正式发布。
+3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 先建一条草稿 Release，再并行构建 Windows、macOS Intel、macOS Apple Silicon，产物都上传到同一条草稿，全部成功后再改为正式发布。
 
 构建时设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败（产物未签名）。若要启用 macOS 签名与公证，需要配置 `CSC_LINK`/`CSC_KEY_PASSWORD` 与 `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` secrets，并把 `electron-builder.yml` 的 `mac.notarize` 改为 `true`。
 
