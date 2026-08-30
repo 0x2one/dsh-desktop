@@ -32,6 +32,11 @@ nsis:
   createDesktopShortcut: always
 mac:
   icon: icon.png
+  category: public.app-category.developer-tools
+  # dmg for distribution, zip for electron-updater (latest-mac.yml).
+  target:
+    - dmg
+    - zip
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.

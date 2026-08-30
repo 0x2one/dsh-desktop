@@ -79,7 +79,18 @@ const ready = new Promise((resolve, reject) => {
 })
 
 const { chromium } = await import('playwright-core')
-const chromePath = join(process.env.LOCALAPPDATA ?? '', 'ms-playwright', 'chromium-1217', 'chrome-win64', 'chrome.exe')
+// Resolve the installed chromium through playwright's own registry
+// (`chromium.executablePath()`), which tracks the revision matching the
+// installed playwright-core. Fall back to the legacy hard-coded path only if
+// the registry lookup misses.
+const chromePath =
+  (() => {
+    try {
+      return chromium.executablePath()
+    } catch {
+      return join(process.env.LOCALAPPDATA ?? '', 'ms-playwright', 'chromium-1217', 'chrome-win64', 'chrome.exe')
+    }
+  })()
 
 let boot = null
 let browser = null

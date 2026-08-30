@@ -25,15 +25,18 @@ DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepsee
 
 首次启动会联网拉取 `@deepseek-ai/dsh@0.1.1-rc.2`；若当前 profile 尚未安装 `dshmarket`，还会阻塞安装插件市场（可能数分钟）。之后与本地 `dsh web` 共用同一套依赖，一般不再重复下载。
 
-Windows 是主要目标平台。macOS 保留红绿灯，但未完整打磨。
+Windows 是主要目标平台，macOS 也受支持：红绿灯窗口控制（不再渲染自定义按钮）、应用菜单与快捷键（Cmd+Q / Cmd+C/V/X/A）、菜单栏模板图标；CI 打版本标签时同时产出 Windows 安装包与 macOS dmg/zip（Intel + Apple Silicon）。macOS 产物未签名未公证，首次打开需在「系统设置 → 隐私与安全性」中允许，或用右键 → 打开。
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/0x2one/dsh-desktop/releases) 下载 Windows 安装包（`dsh-desktop-<version>-setup.exe`）。
+从 [GitHub Releases](https://github.com/0x2one/dsh-desktop/releases) 下载对应平台的产物：
 
-安装后启动数秒会静默检查更新；发现新版本时弹出对话框，确认后下载。下载完成可立即重启安装，或等到托盘「退出」时安装。也可随时用托盘菜单「检查更新…」手动检查。`pnpm dev` 开发模式不访问更新源。
+- **Windows**：`dsh-desktop-<version>-setup.exe`
+- **macOS**：`dsh-desktop-<version>.dmg`（Intel `-x64` 与 Apple Silicon `-arm64` 两个架构）
 
-当前未配置代码签名。
+macOS 产物未签名未公证，首次打开时系统会拦截：在 Finder 中右键应用图标 →「打开」，或到「系统设置 → 隐私与安全性」点击「仍要打开」。安装后启动数秒会静默检查更新；发现新版本时弹出对话框，确认后下载。下载完成可立即重启安装，或等到托盘「退出」时安装。也可随时用托盘菜单「检查更新…」手动检查。`pnpm dev` 开发模式不访问更新源。
+
+当前未配置代码签名（Windows 与 macOS 均未签名）。
 
 ## 托盘与环境
 
@@ -81,7 +84,7 @@ Harness 必须作为独立 Node 子进程运行：它的 bash/pwsh 工具依赖 
 
 ## 发版
 
-Windows 安装包只在打版本标签时由 GitHub Actions 构建，发布到本仓库 GitHub Releases。推送或 PR 不会打包。已安装客户端通过 `electron-updater` 检查同一仓库的 Release（`latest.yml` + NSIS）。
+Windows NSIS 安装包与 macOS dmg/zip 在打版本标签时由 GitHub Actions 并行构建，发布到本仓库 GitHub Releases。推送或 PR 不会打包。已安装客户端通过 `electron-updater` 检查同一仓库的 Release（Windows 用 `latest.yml` + NSIS，macOS 用 `latest-mac.yml` + zip）。macOS job 在 Apple Silicon runner 上原生构建 `arm64`，并交叉编译 `x64`。
 
 **发版步骤**：
 
@@ -93,9 +96,9 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 先建一条草稿 Release，再构建 Windows NSIS 并上传产物，最后把草稿改为正式发布。这样 exe / `latest.yml` / `.blockmap` 会挂在同一条 Release 上。
+3. [`.github/workflows/release.yml`](.github/workflows/release.yml) 的 Windows job 先建一条草稿 Release，Windows 与 macOS 两个 job 并行把各自产物上传到同一条 Release，最后由 Windows job 把草稿改为正式发布。
 
-构建时设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败。
+构建时设置了 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 runner 因找不到证书而失败（产物未签名）。若要启用 macOS 签名与公证，需要配置 `CSC_LINK`/`CSC_KEY_PASSWORD` 与 `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` secrets，并把 `electron-builder.yml` 的 `mac.notarize` 改为 `true`。
 
 ## License
 

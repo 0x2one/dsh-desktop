@@ -19,6 +19,7 @@ import { createAppTray, type AppTray } from './tray'
 import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
 import { promptProfileName } from './profile-prompt'
 import { startAutoUpdater, type AppUpdater } from './updater'
+import { installAppMenu } from './menu'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -154,7 +155,15 @@ if (!gotTheLock) {
       show: false,
       autoHideMenuBar: true,
       frame: false,
-      ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden' as const } : {}),
+      ...(process.platform === 'darwin'
+        ? {
+            // Keep the native traffic lights and pin them where the injected
+            // sidebar drag strip expects them (see the window-controls plugin:
+            // MAC_TRAFFIC_LIGHTS_WIDTH/HEIGHT).
+            titleBarStyle: 'hidden' as const,
+            trafficLightPosition: { x: 12, y: 12 }
+          }
+        : {}),
       title: PRODUCT_NAME,
       icon,
       webPreferences: {
@@ -290,6 +299,15 @@ if (!gotTheLock) {
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.dsh.desktop')
     app.setName(PRODUCT_NAME)
+
+    // macOS application menu (roles for Cmd+Q / Cmd+C/V/X/A / window ops).
+    installAppMenu()
+
+    // In development the app runs from the electron binary, which shows the
+    // Electron default Dock icon; use our icon so the dev dock matches.
+    if (!app.isPackaged && process.platform === 'darwin') {
+      app.dock?.setIcon(icon)
+    }
 
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.

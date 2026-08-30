@@ -25,7 +25,6 @@
  * a scoped stylesheet.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { TITLE_BAR_HEIGHT, WindowControls } from './WindowControls.tsx'
 
@@ -79,6 +78,13 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] {
 }
 div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
   margin-right: ${TITLE_BAR_HEIGHT + 70}px;
+}
+/* macOS: the native traffic lights replace the custom button row, so the
+   center column's title row needs no right margin (the Session log returns
+   to its stock position) and the sidebar drag strip is supplied by the
+   component (data-dsh-sidebar-drag-strip). */
+html[data-platform="darwin"] div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+  margin-right: 0px;
 }
 [data-dsh-window-controls] {
   background: transparent;

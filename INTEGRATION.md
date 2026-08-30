@@ -110,8 +110,11 @@ scripts/
 - esbuild 的 CJS 输出有自己的 `__commonJS` scope，footer 拿不到 exports——用 `format: 'iife'` + `globalName` 捕获，footer 里 `module.exports = global`。
 
 ### 窗口控制
-- BrowserWindow `frame: false`（Windows/Linux 隐藏原生标题栏；macOS `titleBarStyle: 'hidden'`）。
-- IPC：`window:minimize`（send）、`window:toggle-maximize` / `window:is-maximized`（invoke）、`window:close`（send）、`window:maximized-changed`（主进程广播）。
+- BrowserWindow `frame: false`（Windows/Linux 隐藏原生标题栏；macOS `titleBarStyle: 'hidden'` + `trafficLightPosition: { x: 12, y: 12 }` 保留红绿灯）。
+- **平台分支**：preload 桥暴露 `window.api.platform`，并给 `<html>` 打 `data-platform` 属性；插件据此区分：
+  - Windows/Linux：内容栏右上角渲染自定义最小化/最大化/关闭按钮行（IPC `window:minimize` 等），行为不变；
+  - macOS：**不渲染**自定义按钮行（红绿灯已提供最小化/最大化/关闭，绿按钮语义为缩放/全屏，遵循平台惯例不重复）；中间内容列顶部 40px 拖拽条保留；新增**侧栏红绿灯避让拖拽条**（`data-dsh-sidebar-drag-strip`，`left: 72px` 起、高 28px、覆盖到侧栏右缘 = 内容列左缘），红绿灯右侧空白带可拖动窗口；`titleRow` 的 `margin-right` 归零（Session log 回到原位）。
+- IPC：`window:minimize`（send）、`window:toggle-maximize` / `window:is-maximized`（invoke）、`window:close`（send）、`window:maximized-changed`（主进程广播）。macOS 上这些通道仍注册但不被 UI 调用（红绿灯走系统）。
 - 浏览器插件组件用 dsh 主题 CSS 变量（`var(--dsw-alias-*)`）适配明暗主题。
 - **窗口拖动**：无边框窗口没有原生标题栏，插件在**中间内容栏（会话区）顶部 40px 条带**注入 `-webkit-app-region: drag` 拖拽条（`data-dsh-drag-strip`），按下该条带即可移动窗口；操作栏保持 `no-drag`，按钮点击不受影响。
 - **布局占位**：插件注入样式表（`data-dsh-css="dsh-desktop-title-bar"`）：
@@ -149,5 +152,13 @@ node scripts/verify-hero-layout.mjs      # hero 内容顶到顶部 + 操作栏/�
 ## 已知边界
 - 首次启动需联网下载 `@deepseek-ai/dsh@0.1.1-rc.2`（180s 超时，失败显示错误页）。
 - 用户机器需 Node 22.19+/24+ 与 pnpm（启动时检查并提示）。
-- Windows 为主目标；macOS 保留红绿灯但未完整打磨。
+- Windows 为主目标；macOS 受支持（红绿灯 + 应用菜单 + 模板托盘图标 + CI 出 dmg/zip），但未签名未公证，首次打开需手动放行。
+- macOS 菜单栏托盘图标使用现有 icon.png 的 alpha 形状做模板图（`setTemplateImage(true)`），未单独绘制菜单栏专用单色资产。
+- macOS 侧栏红绿灯避让拖拽条几何（`left: 72px`、高 28px）与窗口 `trafficLightPosition: { x: 12, y: 12 }` 匹配；若后续调整红绿灯位置需同步改 `WindowControls.tsx` 的 `MAC_TRAFFIC_LIGHTS_WIDTH/HEIGHT`。
 - dsh 的 bash/pwsh 工具依赖 node-pty（Node ABI），因此 dsh 必须作为独立 Node 子进程运行，不能直接打包进 Electron（electron-builder 会按 Electron ABI rebuild 原生模块导致 ABI 不匹配）。
+
+## macOS 平台细节
+- **应用菜单**：`src/main/menu.ts` 仅在 darwin 安装（roles 驱动，标签跟随系统语言）：App 菜单（关于/服务/隐藏/退出 Cmd+Q）、编辑（Cmd+C/V/X/A）、视图（重载/开发者工具/全屏）、窗口（最小化/缩放/前置）。非 darwin 不设应用菜单（保持 `autoHideMenuBar` + 右键菜单）。
+- **Dock**：开发模式（`!app.isPackaged`）下 `app.dock.setIcon` 用项目图标，避免 dev 显示 Electron 默认图标；打包版用 bundle 内 icon.icns。Dock 点击恢复窗口走现有 `activate` 处理。
+- **托盘**：darwin 用 `nativeImage.createFromPath(icon).setTemplateImage(true)`，自动适配菜单栏明暗模式；非 darwin 保持彩色 PNG。macOS 上托盘点击不绑 `click`/`right-click`（菜单由菜单栏点击消费），行为不变。
+- **打包**：`electron-builder.yml` 的 `mac` 段 `target: [dmg, zip]`（dmg 分发、zip 走 electron-updater `latest-mac.yml`）、`category: public.app-category.developer-tools`；CI `release-macos` job 在 `macos-latest`（Apple Silicon）上构建 `--x64 --arm64`。

@@ -14,6 +14,13 @@
  * 2. The minimize / maximize / close row at the top-right corner of the
  *    center column.
  *
+ * On macOS the window keeps the native traffic lights (`titleBarStyle:
+ * 'hidden'`), so the custom button row is skipped: the traffic lights already
+ * provide minimize / maximize / close and the platform convention is to not
+ * duplicate them. Instead, a sidebar drag strip is added over the traffic
+ * light area's blank space so the window can be dragged from the top-left
+ * band, and the center-column drag strip stays as-is.
+ *
  * Both elements are anchored to the center column's geometry (tracked with a
  * ResizeObserver), so they follow the column as the sidebar or details panel
  * widths change and when the window resizes. The sidebar reaches the very top
@@ -33,6 +40,12 @@ import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 
 /** Height of the title-bar band (px); must match `TITLE_BAR_HEIGHT` in client/index.ts. */
 export const TITLE_BAR_HEIGHT = 40
+
+/** Width of the macOS traffic-light cluster (px); matches the window's default. */
+export const MAC_TRAFFIC_LIGHTS_WIDTH = 72
+
+/** Height of the macOS traffic-light cluster (px). */
+export const MAC_TRAFFIC_LIGHTS_HEIGHT = 28
 
 /** Full props: the shell.overlay runtime share (root scope). */
 export type WindowControlsProps = PropsRuntime<'shell.overlay'>
@@ -72,6 +85,24 @@ const styles = {
     // Electron moves the window when the user presses on a drag region.
     WebkitAppRegion: 'drag' as const,
     zIndex: 900,
+    userSelect: 'none' as const,
+    pointerEvents: 'auto' as const,
+  },
+  /**
+   * macOS sidebar drag strip: the blank band right of the traffic lights.
+   * `position: fixed` over the sidebar's top band, from the traffic-light
+   * cluster (72px) to the sidebar's right edge (= center column left). The
+   * traffic lights themselves are native (`-webkit-app-region: no-drag`), so
+   * this strip must start after them.
+   */
+  sidebarDragStrip: {
+    position: 'fixed' as const,
+    top: '0px',
+    left: `${MAC_TRAFFIC_LIGHTS_WIDTH}px`,
+    height: `${MAC_TRAFFIC_LIGHTS_HEIGHT}px`,
+    background: 'transparent',
+    WebkitAppRegion: 'drag' as const,
+    zIndex: 899,
     userSelect: 'none' as const,
     pointerEvents: 'auto' as const,
   },
@@ -286,6 +317,7 @@ function findUtilities(header: HTMLElement): HTMLElement | null {
  * @param _props - runtime share (unused: root scope carries no owner data).
  */
 export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
+  void _props // root scope carries no owner data; kept for the slot signature.
   const [maximized, setMaximized] = useState(false)
   // Viewport geometry of the center column; drives the fixed positioning of
   // the drag strip and the control row. null until the first observation.
@@ -294,13 +326,16 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
   // the title band (see DragRect above).
   const [drag, setDrag] = useState<DragRect[]>([])
 
+  const isMac = window.api?.platform === 'darwin'
+
   useEffect(() => {
     const bridge = window.api?.windowControls
     if (bridge === undefined) return
+    if (isMac) return // macOS traffic lights handle these natively.
     void bridge.isMaximized().then(setMaximized)
     const unsubscribe = bridge.onMaximizedChange(setMaximized)
     return unsubscribe
-  }, [])
+  }, [isMac])
 
   useEffect(() => {
     const frame = document.querySelector<HTMLElement>('div:has(> [data-shell-overlay])')
@@ -388,6 +423,19 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
 
   return (
     <>
+      {/* macOS: drag strip over the traffic-light area's blank band, from the
+          native cluster (72px) to the sidebar's right edge (= center column
+          left). Rendered before the center-column strips so it sits below. */}
+      {isMac && anchor !== null && (
+        <div
+          style={{
+            ...styles.sidebarDragStrip,
+            width: `${Math.max(0, anchor.left - MAC_TRAFFIC_LIGHTS_WIDTH)}px`,
+          }}
+          aria-hidden="true"
+          data-dsh-sidebar-drag-strip
+        />
+      )}
       {/* Drag surfaces over the title band: pressing and dragging any of them
           moves the window. Rendered first so the control row (z-index 1000)
           stacks above. */}
@@ -403,39 +451,46 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
           data-dsh-drag-strip
         />
       ))}
-      <div style={rootStyle} role="toolbar" aria-label="Window controls" data-dsh-window-controls>
-      <button
-        type="button"
-        style={styles.button}
-        data-dsh-wc-button
-        aria-label="Minimize"
-        title="Minimize"
-        onClick={() => bridge.minimize()}
-      >
-        <MinimizeIcon />
-      </button>
-      <button
-        type="button"
-        style={styles.button}
-        data-dsh-wc-button
-        aria-label={maximized ? 'Restore' : 'Maximize'}
-        title={maximized ? 'Restore' : 'Maximize'}
-        onClick={onToggleMaximize}
-      >
-        {maximized ? <RestoreIcon /> : <MaximizeIcon />}
-      </button>
-      <button
-        type="button"
-        style={styles.button}
-        data-dsh-wc-button
-        data-close
-        aria-label="Close"
-        title="Close"
-        onClick={() => bridge.close()}
-      >
-        <CloseIcon />
-      </button>
-      </div>
+      {/* On macOS the native traffic lights (top-left) already provide
+          minimize / maximize / close, so the custom button row is skipped —
+          the platform convention is to not duplicate them. The maximize
+          mirror and IPC handlers stay registered (harmless) for Windows /
+          Linux. */}
+      {!isMac && (
+        <div style={rootStyle} role="toolbar" aria-label="Window controls" data-dsh-window-controls>
+        <button
+          type="button"
+          style={styles.button}
+          data-dsh-wc-button
+          aria-label="Minimize"
+          title="Minimize"
+          onClick={() => bridge.minimize()}
+        >
+          <MinimizeIcon />
+        </button>
+        <button
+          type="button"
+          style={styles.button}
+          data-dsh-wc-button
+          aria-label={maximized ? 'Restore' : 'Maximize'}
+          title={maximized ? 'Restore' : 'Maximize'}
+          onClick={onToggleMaximize}
+        >
+          {maximized ? <RestoreIcon /> : <MaximizeIcon />}
+        </button>
+        <button
+          type="button"
+          style={styles.button}
+          data-dsh-wc-button
+          data-close
+          aria-label="Close"
+          title="Close"
+          onClick={() => bridge.close()}
+        >
+          <CloseIcon />
+        </button>
+        </div>
+      )}
     </>
   )
 }

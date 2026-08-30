@@ -9,7 +9,7 @@
  * @module dsh-desktop/tray
  */
 
-import { Menu, Tray, type NativeImage } from 'electron'
+import { Menu, Tray, nativeImage, type NativeImage } from 'electron'
 import { PRODUCT_NAME } from './app-name'
 import { listProfiles } from './profile-pref'
 
@@ -44,7 +44,16 @@ export interface AppTray {
  * Must be called after `app.whenReady`.
  */
 export function createAppTray(options: AppTrayOptions): AppTray {
-  const tray = new Tray(options.icon)
+  // On macOS the menu-bar item must be a template image (monochrome, drawn
+  // with the current menu-bar appearance) or it looks wrong in both light
+  // and dark mode. The app icon's alpha shape works as a template.
+  let icon: string | NativeImage = options.icon
+  if (process.platform === 'darwin' && typeof options.icon === 'string') {
+    const image = nativeImage.createFromPath(options.icon)
+    image.setTemplateImage(true)
+    icon = image
+  }
+  const tray = new Tray(icon)
   let current = options.currentProfile
 
   const applyMenu = (): void => {

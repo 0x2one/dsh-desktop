@@ -37,6 +37,8 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
   var import_react = __require("react");
   var import_jsx_runtime = __require("react/jsx-runtime");
   var TITLE_BAR_HEIGHT = 40;
+  var MAC_TRAFFIC_LIGHTS_WIDTH = 72;
+  var MAC_TRAFFIC_LIGHTS_HEIGHT = 28;
   var styles = {
     /**
      * Draggable strip over the center column's title band. `position: fixed`
@@ -52,6 +54,24 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       // Electron moves the window when the user presses on a drag region.
       WebkitAppRegion: "drag",
       zIndex: 900,
+      userSelect: "none",
+      pointerEvents: "auto"
+    },
+    /**
+     * macOS sidebar drag strip: the blank band right of the traffic lights.
+     * `position: fixed` over the sidebar's top band, from the traffic-light
+     * cluster (72px) to the sidebar's right edge (= center column left). The
+     * traffic lights themselves are native (`-webkit-app-region: no-drag`), so
+     * this strip must start after them.
+     */
+    sidebarDragStrip: {
+      position: "fixed",
+      top: "0px",
+      left: `${MAC_TRAFFIC_LIGHTS_WIDTH}px`,
+      height: `${MAC_TRAFFIC_LIGHTS_HEIGHT}px`,
+      background: "transparent",
+      WebkitAppRegion: "drag",
+      zIndex: 899,
       userSelect: "none",
       pointerEvents: "auto"
     },
@@ -200,16 +220,19 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
     return header.querySelector('[class*="_headerUtilities"]');
   }
   function WindowControls(_props) {
+    void _props;
     const [maximized, setMaximized] = (0, import_react.useState)(false);
     const [anchor, setAnchor] = (0, import_react.useState)(null);
     const [drag, setDrag] = (0, import_react.useState)([]);
+    const isMac = window.api?.platform === "darwin";
     (0, import_react.useEffect)(() => {
       const bridge2 = window.api?.windowControls;
       if (bridge2 === void 0) return;
+      if (isMac) return;
       void bridge2.isMaximized().then(setMaximized);
       const unsubscribe = bridge2.onMaximizedChange(setMaximized);
       return unsubscribe;
-    }, []);
+    }, [isMac]);
     (0, import_react.useEffect)(() => {
       const frame = document.querySelector("div:has(> [data-shell-overlay])");
       if (frame === null) return;
@@ -272,6 +295,17 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       right: anchor !== null ? "auto" : "0px"
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      isMac && anchor !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "div",
+        {
+          style: {
+            ...styles.sidebarDragStrip,
+            width: `${Math.max(0, anchor.left - MAC_TRAFFIC_LIGHTS_WIDTH)}px`
+          },
+          "aria-hidden": "true",
+          "data-dsh-sidebar-drag-strip": true
+        }
+      ),
       drag.map((segment, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "div",
         {
@@ -285,7 +319,7 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
         },
         index
       )),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: rootStyle, role: "toolbar", "aria-label": "Window controls", "data-dsh-window-controls": true, children: [
+      !isMac && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: rootStyle, role: "toolbar", "aria-label": "Window controls", "data-dsh-window-controls": true, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
@@ -338,6 +372,13 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] {
 }
 div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
   margin-right: ${TITLE_BAR_HEIGHT + 70}px;
+}
+/* macOS: the native traffic lights replace the custom button row, so the
+   center column's title row needs no right margin (the Session log returns
+   to its stock position) and the sidebar drag strip is supplied by the
+   component (data-dsh-sidebar-drag-strip). */
+html[data-platform="darwin"] div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+  margin-right: 0px;
 }
 [data-dsh-window-controls] {
   background: transparent;
