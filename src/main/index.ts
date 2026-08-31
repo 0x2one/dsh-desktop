@@ -23,6 +23,13 @@ import { getToggleAcceleratorLabel, startToggleHotkey, stopToggleHotkey } from '
 import { startAutoUpdater, type AppUpdater } from './updater'
 import { closeUpdateWindow } from './update-window'
 import { installAppMenu } from './menu'
+import { applyDeferredMaximize, applyWindowState, flushAndStopWindowState } from './window-state'
+import { showCloseToTrayHint } from './app-notify'
+import {
+  isLaunchAtLoginEnabled,
+  shouldStartHidden,
+  toggleLaunchAtLogin
+} from './launch-at-login'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -46,10 +53,16 @@ if (!gotTheLock) {
   // Set during app.whenReady before any window/service starts; a false value
   // means the app profile could not be initialized, so dsh must not boot.
   let profileReady = true
+  // Quiet boot (login item) only applies to the first window. argv /
+  // wasOpenedAtLogin stay true for the process lifetime, so a later recreate
+  // (macOS dock activate after the window was destroyed) must still show.
+  let initialWindowCreated = false
 
   function showMainWindow(): void {
     if (mainWindow === null || mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
+    // Restore skipped maximize() because it would show a hidden window.
+    applyDeferredMaximize()
     if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
   }
@@ -159,6 +172,10 @@ if (!gotTheLock) {
     // Native frame is hidden: the dsh web UI renders the window controls in
     // its top-right corner (window-controls cordis plugin) and drives them
     // over IPC. On macOS the traffic lights stay (titleBarStyle hidden).
+    // Quiet (auto-start) boot stays hidden until the user summons it.
+    // Only the first window: a later recreate must still show.
+    const startHidden = !initialWindowCreated && shouldStartHidden()
+    initialWindowCreated = true
     mainWindow = new BrowserWindow({
       width: 1280,
       height: 800,
@@ -185,7 +202,13 @@ if (!gotTheLock) {
     })
 
     const window = mainWindow
+    // Restore bounds now; maximize waits until first show (it would unhide).
+    applyWindowState(window)
     window.on('ready-to-show', () => {
+      if (window.isDestroyed()) return
+      // Quiet (auto-start) boot stays hidden; the tray restores it.
+      if (startHidden) return
+      applyDeferredMaximize()
       window.show()
     })
 
@@ -202,6 +225,9 @@ if (!gotTheLock) {
       }
       event.preventDefault()
       window.hide()
+      // One-time hint on the first close-to-tray: clicking it restores the
+      // window. No-op after the first time (flag in settings.json).
+      showCloseToTrayHint(showMainWindow)
     })
 
     window.webContents.setWindowOpenHandler((details) => {
@@ -213,6 +239,7 @@ if (!gotTheLock) {
     const disposeControls = registerWindowControls(window)
     window.on('closed', () => {
       disposeControls()
+      flushAndStopWindowState()
       mainWindow = null
     })
 
@@ -385,6 +412,12 @@ if (!gotTheLock) {
       onCreateProfile: () => {
         void createNewProfile()
       },
+      launchAtLogin: isLaunchAtLoginEnabled,
+      onToggleLaunchAtLogin: () => {
+        toggleLaunchAtLogin()
+        // Rebuild the menu so the checkbox reflects the new state.
+        appTray?.refresh()
+      },
       onCheckUpdate: () => {
         appUpdater?.checkForUpdates()
       },
@@ -429,6 +462,9 @@ if (!gotTheLock) {
   let serviceStopping = false
   app.on('before-quit', (event) => {
     quitRequested = true
+    // Persist the window geometry before the process goes away (a normal
+    // close already flushed it; this covers quit-from-tray while hidden).
+    flushAndStopWindowState()
     appTray?.destroy()
     appTray = null
     closeUpdateWindow()

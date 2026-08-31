@@ -31,6 +31,10 @@ export interface AppTrayOptions {
   onSelectProfile: (name: string) => void
   /** User chose 新增环境. */
   onCreateProfile: () => void
+  /** Current launch-at-login state for the checkbox (re-read per menu build). */
+  launchAtLogin: () => boolean
+  /** User toggled the 开机自启 checkbox. */
+  onToggleLaunchAtLogin: () => void
   /** User chose 检查更新. */
   onCheckUpdate: () => void
 }
@@ -80,6 +84,13 @@ export function createAppTray(options: AppTrayOptions): AppTray {
       Menu.buildFromTemplate([
         { label: '显示窗口', click: options.onShow },
         { label: `快捷键：${options.getHotkeyLabel()}`, click: options.onEditHotkey },
+        { type: 'separator' },
+        {
+          label: '开机自启',
+          type: 'checkbox',
+          checked: options.launchAtLogin(),
+          click: options.onToggleLaunchAtLogin
+        },
         { type: 'separator' },
         { label: '启动环境', submenu: profileItems },
         { type: 'separator' },

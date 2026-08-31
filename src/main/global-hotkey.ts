@@ -8,9 +8,8 @@
  * @module dsh-desktop/global-hotkey
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { app, globalShortcut } from 'electron'
+import { globalShortcut } from 'electron'
+import { readAppSettings, updateAppSettings } from './settings'
 
 /** Default summon shortcut: Ctrl+Alt+Space on every platform. */
 export const DEFAULT_TOGGLE_ACCELERATOR = 'Control+Alt+Space'
@@ -102,18 +101,10 @@ export interface KeyEventParts {
 
 export type SetAcceleratorResult = { ok: true } | { ok: false; error: string }
 
-interface SettingsFile {
-  toggleWindowShortcut?: unknown
-}
-
 let onToggle: (() => void) | null = null
 let desiredAccelerator = DEFAULT_TOGGLE_ACCELERATOR
 let registeredAccelerator: string | null = null
 let paused = false
-
-function settingsPath(): string {
-  return join(app.getPath('userData'), 'settings.json')
-}
 
 function keyFromEvent(code: string, key: string): string | null {
   if (code in CODE_TO_KEY) return CODE_TO_KEY[code]
@@ -206,22 +197,18 @@ export function toDisplayLabel(accelerator: string): string {
 }
 
 function loadSavedAccelerator(): string {
-  try {
-    const parsed = JSON.parse(readFileSync(settingsPath(), 'utf8')) as SettingsFile
-    if (typeof parsed.toggleWindowShortcut === 'string') {
-      const normalized = normalizeAccelerator(parsed.toggleWindowShortcut)
-      if (normalized !== null) return normalized
-    }
-  } catch {
-    // Missing or malformed file — fall through to the default.
+  const saved = readAppSettings().toggleWindowShortcut
+  if (typeof saved === 'string') {
+    const normalized = normalizeAccelerator(saved)
+    if (normalized !== null) return normalized
   }
   return DEFAULT_TOGGLE_ACCELERATOR
 }
 
 function saveAccelerator(accelerator: string): void {
-  const path = settingsPath()
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, `${JSON.stringify({ toggleWindowShortcut: accelerator }, undefined, 2)}\n`)
+  // Merge-write: the settings file also carries windowState / launchAtLogin /
+  // closeToTrayHintShown; rewriting the whole file would drop them.
+  updateAppSettings({ toggleWindowShortcut: accelerator })
 }
 
 function fireToggle(): void {
