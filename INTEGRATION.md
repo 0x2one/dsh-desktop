@@ -141,7 +141,7 @@ scripts/
 - 所有桌面壳偏好集中在 `userData/settings.json`（`src/main/settings.ts`）：`toggleWindowShortcut`（快捷键）、`windowState`（窗口几何）、`closeToTrayHintShown`（关闭提示去重）、`launchAtLogin`（自启意图）。写入一律 **merge-write**（先读后写、保留未知键），各模块只维护自己的键，互不覆盖；`global-hotkey.ts` 的 `saveAccelerator` 已改为 merge-write。
 - **窗口状态记忆**（`src/main/window-state.ts`）：`BrowserWindow` 创建后、`ready-to-show` 前调用 `applyWindowState`——从设置读取 bounds + 最大化标志，用 `screen.getAllDisplays()` 校验（与任一显示器工作区有交集、不小于 900×600，否则回退默认 1280×800 居中）；`resize`/`move`（防抖 500ms）/`maximize`/`unmaximize` 保存 `getNormalBounds()`（最大化时不会保存虚化矩形）；`close` 时立即 flush，`before-quit` 再兜底 flush。`maximize()` 会把 `show: false` 的窗口显示出来，因此 restore **从不** 调用它：普通启动在 `ready-to-show`、静默启动在第一次 `showMainWindow` 时再 `applyDeferredMaximize()`；flush 仍把 deferred 的最大化标志写回设置。
 - **首次关闭提示**（`src/main/app-notify.ts`）：第一次关闭到托盘时弹系统 `Notification`（「点击托盘图标可恢复；如需退出请用托盘菜单」），点击通知恢复窗口；`closeToTrayHintShown` 置位后不再提示。`Notification.isSupported()` 为 false 时静默跳过并直接置位（不重复尝试）。
-- **开机自启 + 静默启动**（`src/main/launch-at-login.ts`）：托盘「开机自启」checkbox → 意图存 `launchAtLogin`。Windows：`setLoginItemSettings({ openAtLogin, enabled, args: ['--hidden'] })`，查询时必须带同样的 `args`，并以 `executableWillLaunchAtLogin` 交叉校验（任务管理器关掉启动项时勾选会跟着灭）。macOS：只设 `openAtLogin`（登录项不支持 `args`），静默启动看 `wasOpenedAtLogin`。Linux：不调登录项 API，勾选只跟意图走。`shouldStartHidden` 只作用于**第一扇**窗口（进程级 argv / wasOpenedAtLogin 不会清掉，后续 `createWindow` 仍要显示）。手动启动或二次实例走 `showMainWindow`。注册失败时回滚设置。
+- **开机自启 + 静默启动**（`src/main/launch-at-login.ts`）：托盘「开机自启」二级菜单（开启 / 关闭，与「启动环境」相同的 radio 形式），意图存 `launchAtLogin`。勾选状态以意图为准，系统侧仍在启动则也显示为开。Windows：`setLoginItemSettings({ openAtLogin, enabled, args: ['--hidden'] })`。macOS：只设 `openAtLogin`，静默启动看 `wasOpenedAtLogin`。Linux：不调登录项 API。`shouldStartHidden` 只作用于**第一扇**窗口。手动启动或二次实例走 `showMainWindow`。注册失败时回滚设置。
 
 ## 验证
 

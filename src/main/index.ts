@@ -27,8 +27,8 @@ import { applyDeferredMaximize, applyWindowState, flushAndStopWindowState } from
 import { showCloseToTrayHint } from './app-notify'
 import {
   isLaunchAtLoginEnabled,
-  shouldStartHidden,
-  toggleLaunchAtLogin
+  setLaunchAtLogin,
+  shouldStartHidden
 } from './launch-at-login'
 
 // Point the plugin installer at the built plugin tree. In development this is
@@ -413,9 +413,9 @@ if (!gotTheLock) {
         void createNewProfile()
       },
       launchAtLogin: isLaunchAtLoginEnabled,
-      onToggleLaunchAtLogin: () => {
-        toggleLaunchAtLogin()
-        // Rebuild the menu so the checkbox reflects the new state.
+      onToggleLaunchAtLogin: (enabled) => {
+        setLaunchAtLogin(enabled)
+        // Rebuild so the 开启 / 关闭 radio reflects the new state.
         appTray?.refresh()
       },
       onCheckUpdate: () => {

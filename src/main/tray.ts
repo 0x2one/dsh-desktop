@@ -31,10 +31,10 @@ export interface AppTrayOptions {
   onSelectProfile: (name: string) => void
   /** User chose 新增环境. */
   onCreateProfile: () => void
-  /** Current launch-at-login state for the checkbox (re-read per menu build). */
+  /** Current launch-at-login state (re-read per menu build). */
   launchAtLogin: () => boolean
-  /** User toggled the 开机自启 checkbox. */
-  onToggleLaunchAtLogin: () => void
+  /** User picked 开启 or 关闭 in the 开机自启 submenu. */
+  onToggleLaunchAtLogin: (enabled: boolean) => void
   /** User chose 检查更新. */
   onCheckUpdate: () => void
 }
@@ -80,6 +80,7 @@ export function createAppTray(options: AppTrayOptions): AppTray {
       { type: 'separator' },
       { label: '新增环境…', click: (): void => options.onCreateProfile() }
     ]
+    const launchAtLogin = options.launchAtLogin()
     tray.setContextMenu(
       Menu.buildFromTemplate([
         { label: '显示窗口', click: options.onShow },
@@ -87,9 +88,26 @@ export function createAppTray(options: AppTrayOptions): AppTray {
         { type: 'separator' },
         {
           label: '开机自启',
-          type: 'checkbox',
-          checked: options.launchAtLogin(),
-          click: options.onToggleLaunchAtLogin
+          submenu: [
+            {
+              label: '开启',
+              type: 'radio',
+              checked: launchAtLogin,
+              click: (): void => {
+                if (launchAtLogin) return
+                options.onToggleLaunchAtLogin(true)
+              }
+            },
+            {
+              label: '关闭',
+              type: 'radio',
+              checked: !launchAtLogin,
+              click: (): void => {
+                if (!launchAtLogin) return
+                options.onToggleLaunchAtLogin(false)
+              }
+            }
+          ]
         },
         { type: 'separator' },
         { label: '启动环境', submenu: profileItems },

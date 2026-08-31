@@ -1,8 +1,8 @@
 /**
  * Launch-at-login (auto-start) and hidden (quiet) startup.
  *
- * The tray exposes a "开机自启" checkbox; toggling it registers the app with
- * the OS (Windows registry / macOS login items via
+ * The tray exposes a "开机自启" submenu (开启 / 关闭); picking one registers
+ * the app with the OS (Windows registry / macOS login items via
  * `app.setLoginItemSettings`) and persists the intent in settings.json.
  *
  * Quiet-boot detection is platform-specific:
@@ -47,26 +47,32 @@ function windowsLoginItemQuery(): { args: string[] } {
 }
 
 /**
- * Whether launch-at-login is enabled. The persisted intent is the source of
- * truth; on Windows/macOS the OS-reported state is a cross-check so a manual
- * system change (Task Manager / Login Items) is reflected. Linux has no
- * reliable `setLoginItemSettings`, so the checkbox follows the intent only.
+ * Whether launch-at-login is enabled. The persisted intent is what the tray
+ * shows: a mismatched OS probe previously hid the check even after the user
+ * turned it on. If the OS still reports the login item as active (e.g. a
+ * leftover Run key), treat that as on too so the label stays honest.
  */
 export function isLaunchAtLoginEnabled(): boolean {
   const intent = readAppSettings().launchAtLogin === true
-  if (!intent) return false
-  if (process.platform === 'linux') return true
+  if (process.platform === 'linux') return intent
   try {
-    if (process.platform === 'win32') {
-      const settings = app.getLoginItemSettings(windowsLoginItemQuery())
-      // `executableWillLaunchAtLogin` is false when the user disabled the
-      // entry in Task Manager even if the Run key still exists.
-      return settings.executableWillLaunchAtLogin
-    }
-    return app.getLoginItemSettings().openAtLogin
+    if (osLaunchItemActive()) return true
   } catch {
-    return true // OS probe failed; trust the persisted intent.
+    // Probe failed — fall through to intent.
   }
+  return intent
+}
+
+/** True when the OS login item would actually start this app. */
+function osLaunchItemActive(): boolean {
+  if (process.platform === 'win32') {
+    const matched = app.getLoginItemSettings(windowsLoginItemQuery())
+    if (matched.openAtLogin || matched.executableWillLaunchAtLogin) return true
+    // Args mismatch still leaves the exe in the Run key.
+    const any = app.getLoginItemSettings()
+    return any.executableWillLaunchAtLogin === true
+  }
+  return app.getLoginItemSettings().openAtLogin === true
 }
 
 /**
