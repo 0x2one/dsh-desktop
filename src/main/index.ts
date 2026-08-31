@@ -18,6 +18,8 @@ import { ensureMarketInstalled } from './plugin-market'
 import { createAppTray, type AppTray } from './tray'
 import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
 import { promptProfileName } from './profile-prompt'
+import { promptToggleHotkey } from './hotkey-prompt'
+import { getToggleAcceleratorLabel, startToggleHotkey, stopToggleHotkey } from './global-hotkey'
 import { startAutoUpdater, type AppUpdater } from './updater'
 import { closeUpdateWindow } from './update-window'
 import { installAppMenu } from './menu'
@@ -50,6 +52,15 @@ if (!gotTheLock) {
     if (mainWindow.isMinimized()) mainWindow.restore()
     if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
+  }
+
+  function toggleMainWindow(): void {
+    if (mainWindow === null || mainWindow.isDestroyed()) return
+    if (mainWindow.isVisible() && mainWindow.isFocused()) {
+      mainWindow.hide()
+      return
+    }
+    showMainWindow()
   }
 
   function loadLocalRenderer(error?: string): void {
@@ -356,10 +367,18 @@ if (!gotTheLock) {
       console.error('[dsh-desktop] profile initialization failed:', error)
     }
 
+    startToggleHotkey(toggleMainWindow)
+
     appTray = createAppTray({
       icon,
       currentProfile: activeProfile,
       onShow: showMainWindow,
+      getHotkeyLabel: getToggleAcceleratorLabel,
+      onEditHotkey: () => {
+        void promptToggleHotkey(mainWindow).then((changed) => {
+          if (changed) appTray?.refresh()
+        })
+      },
       onSelectProfile: (name) => {
         void switchProfile(name)
       },
@@ -423,6 +442,10 @@ if (!gotTheLock) {
     void Promise.race([service.stop(), timeout]).finally(() => {
       app.quit()
     })
+  })
+
+  app.on('will-quit', () => {
+    stopToggleHotkey()
   })
 
   // Keep the process (and tray) alive when windows are closed. Actual quit is

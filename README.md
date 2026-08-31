@@ -9,6 +9,7 @@ DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepsee
 - 嵌入固定版本 `@deepseek-ai/dsh@0.1.1-rc.2`（`npx` 子进程，独立 Node ABI，不打进 Electron）
 - 无边框窗口：Windows/Linux 内容栏右上角自定义最小化 / 最大化 / 关闭；macOS 保留系统红绿灯，不重复渲染自定义按钮；会话区顶部可拖动
 - 系统托盘：关闭窗口隐藏到托盘，托盘可切换 / 新建 harness 环境（macOS 菜单栏模板图标，自动适配明暗模式）
+- 全局快捷键显示 / 隐藏窗口（默认 Ctrl+Alt+空格，可在托盘自定义）
 - macOS 应用菜单与快捷键：Cmd+Q 退出、Cmd+C/V/X/A 编辑、全屏等（仅 macOS）
 - 首次启动自动安装 `dshmarket` 插件市场（装进当前 profile，不碰用户 `web` profile）
 - 启动时检查 Node.js / pnpm，缺失或版本不足会弹窗提示
@@ -44,6 +45,7 @@ macOS 产物未签名未公证，首次打开时系统会拦截：在 Finder 中
 关闭窗口会隐藏到系统托盘，不会退出。托盘菜单：
 
 - **显示窗口** — 恢复主窗口
+- **快捷键：Ctrl + Alt + 空格** — 自定义全局显示 / 隐藏快捷键（默认 Ctrl+Alt+空格）
 - **启动环境** — 列出 `~/.dsh/profiles/` 下的 profile，单选切换；上次选择会记住
 - **新增环境…** — 创建新 profile，并尝试安装 `dshmarket`
 - **检查更新…** — 手动检查 GitHub Releases
