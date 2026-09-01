@@ -211,12 +211,21 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
       void (async () => {
         try {
           const state = await api.beginHotkeyCapture();
+          if (!state.ok) {
+            setCapturing(false);
+            setPending(null);
+            setHotkeyError(t("hotkeyCaptureBusy"));
+            return;
+          }
           setHotkeyDefaults({
             accelerator: state.defaultAccelerator,
             label: state.defaultLabel
           });
           setPending({ accelerator: state.accelerator, label: state.label });
         } catch {
+          setCapturing(false);
+          setPending(null);
+          void api.cancelHotkeyCapture();
           setHotkeyError(t("hotkeyCaptureFailed"));
         }
       })();
@@ -512,6 +521,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
     hotkeyPlaceholder: "Press a shortcut",
     hotkeyEmpty: "Press a shortcut first.",
     hotkeyCaptureFailed: "Could not start shortcut recording.",
+    hotkeyCaptureBusy: "Finish the other shortcut editor first.",
     hotkeyReset: "Restore default",
     hotkeySave: "Save",
     cancel: "Cancel",
@@ -550,6 +560,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
     hotkeyPlaceholder: "\u6309\u4E0B\u65B0\u7684\u5FEB\u6377\u952E",
     hotkeyEmpty: "\u8BF7\u5148\u6309\u4E0B\u8981\u4F7F\u7528\u7684\u5FEB\u6377\u952E\u3002",
     hotkeyCaptureFailed: "\u65E0\u6CD5\u5F00\u59CB\u5F55\u5236\u5FEB\u6377\u952E\u3002",
+    hotkeyCaptureBusy: "\u8BF7\u5148\u5B8C\u6210\u53E6\u4E00\u5904\u6B63\u5728\u4FEE\u6539\u7684\u5FEB\u6377\u952E\u3002",
     hotkeyReset: "\u6062\u590D\u9ED8\u8BA4",
     hotkeySave: "\u4FDD\u5B58",
     cancel: "\u53D6\u6D88",

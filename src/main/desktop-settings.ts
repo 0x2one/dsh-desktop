@@ -12,9 +12,9 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import {
   DESKTOP_CHANNELS,
+  type BeginHotkeyCaptureResult,
   type CreateProfileResult,
   type DesktopSnapshot,
-  type HotkeyCaptureState,
   type HotkeyKeyEvent,
   type HotkeyPreview,
   type SetHotkeyResult
@@ -25,7 +25,7 @@ export interface DesktopSettingsHandlers {
   /** Current snapshot (re-read on every get / broadcast). */
   getSnapshot: () => DesktopSnapshot
   /** Pause the global shortcut and return the current / default labels. */
-  beginHotkeyCapture: () => HotkeyCaptureState
+  beginHotkeyCapture: () => BeginHotkeyCaptureResult
   /** Parse a key event into an accelerator, or null while still incomplete. */
   previewHotkey: (parts: HotkeyKeyEvent) => HotkeyPreview | null
   /** Register a captured accelerator. */
@@ -76,7 +76,7 @@ export function registerDesktopSettings(
 
   const handleGetSnapshot = (): DesktopSnapshot => handlers.getSnapshot()
 
-  const handleBeginHotkeyCapture = (): HotkeyCaptureState => handlers.beginHotkeyCapture()
+  const handleBeginHotkeyCapture = (): BeginHotkeyCaptureResult => handlers.beginHotkeyCapture()
 
   const handlePreviewHotkey = (
     _event: Electron.IpcMainInvokeEvent,

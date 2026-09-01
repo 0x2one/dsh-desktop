@@ -111,6 +111,12 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
   let pendingVersion: string | undefined
   /** Subsequent download / ready prompts follow the last manual check. */
   let openWindowOnPresent = true
+  /**
+   * Manual check that arrived while a check was already in flight.
+   * The in-flight run presents its result for this waiter (so the settings
+   * page is not left on an optimistic "checking" after a silent startup check).
+   */
+  let pendingManual: { showWindow: boolean } | null = null
 
   autoUpdater.on('error', (error) => {
     console.error('[dsh-desktop] auto-update error:', error)
@@ -187,7 +193,7 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
     }
     if (checking || downloading) {
       if (!silent) {
-        openWindowOnPresent = showWindow
+        if (checking) pendingManual = { showWindow }
         if (showWindow) showUpdateWindow(options.getWindow)
       }
       return
@@ -201,14 +207,19 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
     }
     try {
       const result = await autoUpdater.checkForUpdates()
+      const waiting = pendingManual
       if (result === null || !updateIsAvailable(result)) {
-        if (!silent) present({ ...baseState(), phase: 'latest', notes: '' })
+        if (!silent || waiting !== null) {
+          if (waiting !== null) openWindowOnPresent = waiting.showWindow
+          present({ ...baseState(), phase: 'latest', notes: '' })
+        }
         return
       }
 
       pendingVersion = result.updateInfo.version
       pendingNotes = notesFromInfo(result.updateInfo)
-      if (silent) openWindowOnPresent = true
+      if (waiting !== null) openWindowOnPresent = waiting.showWindow
+      else if (silent) openWindowOnPresent = true
       present({
         ...baseState(),
         phase: 'available',
@@ -217,7 +228,9 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
       })
     } catch (error) {
       console.error('[dsh-desktop] update check failed:', error)
-      if (!silent) {
+      const waiting = pendingManual
+      if (!silent || waiting !== null) {
+        if (waiting !== null) openWindowOnPresent = waiting.showWindow
         present({
           ...baseState(),
           phase: 'error',
@@ -227,6 +240,7 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
       }
     } finally {
       checking = false
+      pendingManual = null
     }
   }
 

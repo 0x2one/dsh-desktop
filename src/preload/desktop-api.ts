@@ -58,6 +58,11 @@ export interface HotkeyCaptureState {
   defaultLabel: string
 }
 
+/** Result of starting inline shortcut recording. */
+export type BeginHotkeyCaptureResult =
+  | ({ ok: true } & HotkeyCaptureState)
+  | { ok: false; error: string }
+
 /** A key chord that parsed into a valid accelerator. */
 export interface HotkeyPreview {
   /** Canonical Electron accelerator string. */
@@ -75,7 +80,7 @@ export type CreateProfileResult = { ok: true; warning?: string } | { ok: false; 
 /** Renderer-facing API exposed as `window.api.desktop`. */
 export interface DesktopApi {
   getSnapshot: () => Promise<DesktopSnapshot>
-  beginHotkeyCapture: () => Promise<HotkeyCaptureState>
+  beginHotkeyCapture: () => Promise<BeginHotkeyCaptureResult>
   previewHotkey: (parts: HotkeyKeyEvent) => Promise<HotkeyPreview | null>
   commitHotkey: (accelerator: string) => Promise<SetHotkeyResult>
   cancelHotkeyCapture: () => Promise<void>

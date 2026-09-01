@@ -101,10 +101,14 @@ export interface KeyEventParts {
 
 export type SetAcceleratorResult = { ok: true } | { ok: false; error: string }
 
+/** Who currently owns the show/hide shortcut recorder. */
+export type HotkeyCaptureOwner = 'tray' | 'settings'
+
 let onToggle: (() => void) | null = null
 let desiredAccelerator = DEFAULT_TOGGLE_ACCELERATOR
 let registeredAccelerator: string | null = null
 let paused = false
+let captureOwner: HotkeyCaptureOwner | null = null
 
 function keyFromEvent(code: string, key: string): string | null {
   if (code in CODE_TO_KEY) return CODE_TO_KEY[code]
@@ -252,6 +256,7 @@ function loadAndRegister(): void {
 export function startToggleHotkey(toggle: () => void): void {
   onToggle = toggle
   paused = false
+  captureOwner = null
   loadAndRegister()
 }
 
@@ -261,6 +266,7 @@ export function stopToggleHotkey(): void {
   globalShortcut.unregisterAll()
   onToggle = null
   paused = false
+  captureOwner = null
 }
 
 /**
@@ -281,6 +287,29 @@ export function resumeToggleHotkey(): void {
   if (!tryRegister(desiredAccelerator)) {
     console.error(`[dsh-desktop] failed to restore toggle hotkey: ${desiredAccelerator}`)
   }
+}
+
+/**
+ * Pause the global shortcut for one recorder (tray dialog or settings page).
+ * @returns false when the other surface is already recording.
+ */
+export function beginHotkeyCaptureSession(owner: HotkeyCaptureOwner): boolean {
+  if (captureOwner !== null && captureOwner !== owner) return false
+  if (captureOwner === null) {
+    captureOwner = owner
+    pauseToggleHotkey()
+  }
+  return true
+}
+
+/**
+ * Release a recorder session. Resumes the global shortcut unless
+ * {@link setToggleAccelerator} already unpaused (save succeeded).
+ */
+export function endHotkeyCaptureSession(owner: HotkeyCaptureOwner): void {
+  if (captureOwner !== owner) return
+  captureOwner = null
+  resumeToggleHotkey()
 }
 
 export function getToggleAccelerator(): string {

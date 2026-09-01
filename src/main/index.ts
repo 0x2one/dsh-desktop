@@ -24,10 +24,10 @@ import { promptToggleHotkey } from './hotkey-prompt'
 import {
   DEFAULT_TOGGLE_ACCELERATOR,
   acceleratorFromKeyEvent,
+  beginHotkeyCaptureSession,
+  endHotkeyCaptureSession,
   getToggleAccelerator,
   getToggleAcceleratorLabel,
-  pauseToggleHotkey,
-  resumeToggleHotkey,
   setToggleAccelerator,
   startToggleHotkey,
   stopToggleHotkey,
@@ -281,9 +281,12 @@ if (!gotTheLock) {
     desktopSettings = registerDesktopSettings(window, {
       getSnapshot: desktopSnapshot,
       beginHotkeyCapture: () => {
-        pauseToggleHotkey()
+        if (!beginHotkeyCaptureSession('settings')) {
+          return { ok: false, error: '正在其它窗口中修改快捷键。' }
+        }
         const accelerator = getToggleAccelerator()
         return {
+          ok: true,
           accelerator,
           label: toDisplayLabel(accelerator),
           defaultAccelerator: DEFAULT_TOGGLE_ACCELERATOR,
@@ -297,11 +300,14 @@ if (!gotTheLock) {
       },
       commitHotkey: (accelerator) => {
         const result = setToggleAccelerator(accelerator)
-        if (result.ok) syncDesktopChrome()
+        if (result.ok) {
+          endHotkeyCaptureSession('settings')
+          syncDesktopChrome()
+        }
         return result
       },
       cancelHotkeyCapture: (): void => {
-        resumeToggleHotkey()
+        endHotkeyCaptureSession('settings')
       },
       setLaunchAtLogin: (enabled): void => {
         setLaunchAtLogin(enabled)

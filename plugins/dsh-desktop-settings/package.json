@@ -1,6 +1,6 @@
 {
   "name": "@dsh-desktop/settings",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "dsh-desktop settings section (hotkey, launch-at-login, profiles, updates) in the DeepSeek Harness settings panel",
   "type": "module",
   "main": "lib/index.js",

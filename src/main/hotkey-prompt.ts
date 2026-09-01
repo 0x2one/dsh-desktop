@@ -10,9 +10,9 @@ import icon from '../../resources/icon.png?asset'
 import {
   DEFAULT_TOGGLE_ACCELERATOR,
   acceleratorFromKeyEvent,
+  beginHotkeyCaptureSession,
+  endHotkeyCaptureSession,
   getToggleAccelerator,
-  pauseToggleHotkey,
-  resumeToggleHotkey,
   setToggleAccelerator,
   toDisplayLabel,
   type KeyEventParts
@@ -48,8 +48,8 @@ function isKeyEventParts(value: unknown): value is KeyEventParts {
  */
 export function promptToggleHotkey(parent: BrowserWindow | null): Promise<boolean> {
   if (open) return Promise.resolve(false)
+  if (!beginHotkeyCaptureSession('tray')) return Promise.resolve(false)
   open = true
-  pauseToggleHotkey()
 
   return new Promise((resolve) => {
     let settled = false
@@ -62,7 +62,7 @@ export function promptToggleHotkey(parent: BrowserWindow | null): Promise<boolea
       ipcMain.removeListener(CHANNEL.save, onSave)
       ipcMain.removeListener(CHANNEL.cancel, onCancel)
       if (!win.isDestroyed()) win.close()
-      if (!changed) resumeToggleHotkey()
+      endHotkeyCaptureSession('tray')
       open = false
       resolve(changed)
     }

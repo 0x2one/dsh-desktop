@@ -2,10 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import {
   DESKTOP_CHANNELS,
+  type BeginHotkeyCaptureResult,
   type CreateProfileResult,
   type DesktopApi,
   type DesktopSnapshot,
-  type HotkeyCaptureState,
   type HotkeyKeyEvent,
   type HotkeyPreview,
   type SetHotkeyResult
@@ -77,7 +77,7 @@ const api = {
   } satisfies UpdaterApi,
   desktop: {
     getSnapshot: (): Promise<DesktopSnapshot> => ipcRenderer.invoke(DESKTOP_CHANNELS.getSnapshot),
-    beginHotkeyCapture: (): Promise<HotkeyCaptureState> =>
+    beginHotkeyCapture: (): Promise<BeginHotkeyCaptureResult> =>
       ipcRenderer.invoke(DESKTOP_CHANNELS.beginHotkeyCapture),
     previewHotkey: (parts: HotkeyKeyEvent): Promise<HotkeyPreview | null> =>
       ipcRenderer.invoke(DESKTOP_CHANNELS.previewHotkey, parts),

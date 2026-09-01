@@ -52,6 +52,10 @@ export interface HotkeyCaptureState {
   defaultLabel: string
 }
 
+export type BeginHotkeyCaptureResult =
+  | ({ ok: true } & HotkeyCaptureState)
+  | { ok: false; error: string }
+
 export interface HotkeyPreview {
   accelerator: string
   label: string
@@ -64,7 +68,7 @@ export type CreateProfileResult = { ok: true; warning?: string } | { ok: false; 
 /** Preload bridge used by this page. */
 export interface DesktopBridge {
   getSnapshot: () => Promise<DesktopSnapshot>
-  beginHotkeyCapture: () => Promise<HotkeyCaptureState>
+  beginHotkeyCapture: () => Promise<BeginHotkeyCaptureResult>
   previewHotkey: (parts: HotkeyKeyEvent) => Promise<HotkeyPreview | null>
   commitHotkey: (accelerator: string) => Promise<SetHotkeyResult>
   cancelHotkeyCapture: () => Promise<void>
@@ -326,12 +330,21 @@ export function DesktopSection({ t }: DesktopSectionProps): React.JSX.Element | 
     void (async () => {
       try {
         const state = await api.beginHotkeyCapture()
+        if (!state.ok) {
+          setCapturing(false)
+          setPending(null)
+          setHotkeyError(t('hotkeyCaptureBusy'))
+          return
+        }
         setHotkeyDefaults({
           accelerator: state.defaultAccelerator,
           label: state.defaultLabel
         })
         setPending({ accelerator: state.accelerator, label: state.label })
       } catch {
+        setCapturing(false)
+        setPending(null)
+        void api.cancelHotkeyCapture()
         setHotkeyError(t('hotkeyCaptureFailed'))
       }
     })()
