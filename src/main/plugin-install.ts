@@ -8,11 +8,11 @@
  * the profile's user patch layer (`cordis.patch.yml`) is a top-level YAML
  * array of loader patch entries.
  *
- * This module installs our window-controls plugin without touching the
- * harness source: it copies the built plugin package into the app profile's
+ * This module installs our desktop cordis plugins without touching the
+ * harness source: it copies each built plugin package into the app profile's
  * node_modules and appends an `insert` entry to the user patch layer. Both
  * steps are idempotent, and the app profile's `patchReload: live` picks the
- * new entry up without a restart.
+ * new entries up without a restart.
  *
  * @module dsh-desktop/plugin-install
  */
@@ -32,19 +32,45 @@ export const WINDOW_CONTROLS_PACKAGE = '@dsh-desktop/window-controls'
 /** Loader entry id for the window-controls plugin. */
 export const WINDOW_CONTROLS_ENTRY_ID = 'dsh-desktop-window-controls'
 
+/** Plugin package name (matches plugins/dsh-desktop-settings/package.json). */
+export const SETTINGS_PACKAGE = '@dsh-desktop/settings'
+
+/** Loader entry id for the desktop settings plugin. */
+export const SETTINGS_ENTRY_ID = 'dsh-desktop-settings'
+
 /**
  * Env flag set only when the Electron app spawns `dsh web`. Console
- * `dsh --profile dsh-desktop` does not set it, so the loader disables this
- * entry and the client bundle never enters `__DSH_BOOT__` (no title-bar CSS,
- * Session log stays in its stock position).
+ * `dsh --profile dsh-desktop` does not set it, so the loader disables these
+ * entries and the client bundles never enter `__DSH_BOOT__`.
  */
 export const DSH_DESKTOP_ENV = 'DSH_DESKTOP'
 
 /** `!!js` expression: disable unless the Electron app set {@link DSH_DESKTOP_ENV}. */
-const WINDOW_CONTROLS_DISABLED_JS = `process.env.${DSH_DESKTOP_ENV} !== '1'`
+const DESKTOP_ONLY_DISABLED_JS = `process.env.${DSH_DESKTOP_ENV} !== '1'`
 
-/** Relative package path inside the built plugins tree. */
-const WINDOW_CONTROLS_REL = join('dsh-desktop-window-controls')
+/** One cordis plugin the desktop app injects into the harness profile. */
+export interface DesktopPluginSpec {
+  /** Directory name under `plugins/`. */
+  rel: string
+  /** npm package name copied into profile `node_modules`. */
+  packageName: string
+  /** Loader entry id written to `cordis.patch.yml`. */
+  entryId: string
+}
+
+/** Plugins injected into every desktop profile. */
+export const DESKTOP_PLUGINS: readonly DesktopPluginSpec[] = [
+  {
+    rel: 'dsh-desktop-window-controls',
+    packageName: WINDOW_CONTROLS_PACKAGE,
+    entryId: WINDOW_CONTROLS_ENTRY_ID
+  },
+  {
+    rel: 'dsh-desktop-settings',
+    packageName: SETTINGS_PACKAGE,
+    entryId: SETTINGS_ENTRY_ID
+  }
+]
 
 /**
  * Absolute source tree of built plugins. Resolved in order:
@@ -57,17 +83,18 @@ const WINDOW_CONTROLS_REL = join('dsh-desktop-window-controls')
  */
 function pluginsSourceRoot(): string {
   const override = process.env.DSH_DESKTOP_PLUGINS_ROOT
-  if (
-    override !== undefined &&
-    override.trim() !== '' &&
-    existsSync(join(override, WINDOW_CONTROLS_REL))
-  ) {
+  if (override !== undefined && override.trim() !== '' && sourceHasAnyPlugin(override)) {
     return override
   }
   const packaged =
     process.resourcesPath !== undefined ? join(process.resourcesPath, 'plugins') : undefined
-  if (packaged !== undefined && existsSync(join(packaged, WINDOW_CONTROLS_REL))) return packaged
+  if (packaged !== undefined && sourceHasAnyPlugin(packaged)) return packaged
   return join(process.cwd(), 'plugins')
+}
+
+/** True when `root` contains at least one desktop plugin package. */
+function sourceHasAnyPlugin(root: string): boolean {
+  return DESKTOP_PLUGINS.some((plugin) => existsSync(join(root, plugin.rel, 'package.json')))
 }
 
 /**
@@ -79,19 +106,41 @@ export function defaultDshHome(): string {
   return resolveProfileHome()
 }
 
-/** Absolute node_modules target for the window-controls package. */
-function pluginTargetDir(home: string, profile: string): string {
-  return join(profileDir(profile, home), 'node_modules', WINDOW_CONTROLS_PACKAGE)
+/** Absolute node_modules target for one plugin package. */
+function pluginTargetDir(plugin: DesktopPluginSpec, home: string, profile: string): string {
+  return join(profileDir(profile, home), 'node_modules', plugin.packageName)
 }
 
-/** Whether the built plugin source exists (used to skip silently in dev). */
+/** Whether every built plugin source exists (used to skip silently in dev). */
 export function pluginBuildExists(): boolean {
-  return existsSync(join(pluginsSourceRoot(), WINDOW_CONTROLS_REL, 'package.json'))
+  const root = pluginsSourceRoot()
+  return DESKTOP_PLUGINS.every((plugin) => existsSync(join(root, plugin.rel, 'package.json')))
+}
+
+/**
+ * Copy one built plugin package into the profile's node_modules.
+ * Idempotent: an existing install with the same package version is left alone.
+ */
+function installPluginPackage(plugin: DesktopPluginSpec, home: string, profile: string): boolean {
+  const source = join(pluginsSourceRoot(), plugin.rel)
+  const sourceManifest = join(source, 'package.json')
+  if (!existsSync(sourceManifest)) return false
+
+  const target = pluginTargetDir(plugin, home, profile)
+  const targetManifest = join(target, 'package.json')
+  const sourceVersion = readPackageVersion(sourceManifest)
+  const targetVersion = existsSync(targetManifest) ? readPackageVersion(targetManifest) : undefined
+  if (targetVersion === sourceVersion && existsSync(join(target, 'lib', 'client.js'))) {
+    return true
+  }
+
+  mkdirSync(dirname(target), { recursive: true })
+  cpSync(source, target, { recursive: true, force: true })
+  return existsSync(join(target, 'lib', 'client.js'))
 }
 
 /**
  * Copy the built window-controls package into the profile's node_modules.
- * Idempotent: an existing install with the same package version is left alone.
  * @param home - the harness home (defaults to `~/.dsh`).
  * @param profile - harness profile name (defaults to `dsh-desktop`).
  * @returns whether the plugin is present after the call.
@@ -100,21 +149,9 @@ export function installWindowControlsPackage(
   home: string = defaultDshHome(),
   profile: string = APP_PROFILE
 ): boolean {
-  const source = join(pluginsSourceRoot(), WINDOW_CONTROLS_REL)
-  const sourceManifest = join(source, 'package.json')
-  if (!existsSync(sourceManifest)) return false
-
-  const target = pluginTargetDir(home, profile)
-  const targetManifest = join(target, 'package.json')
-  const sourceVersion = readPackageVersion(sourceManifest)
-  const targetVersion = existsSync(targetManifest) ? readPackageVersion(targetManifest) : undefined
-  if (targetVersion === sourceVersion && existsSync(join(target, 'lib', 'client.js'))) {
-    return true // already installed and current
-  }
-
-  mkdirSync(dirname(target), { recursive: true })
-  cpSync(source, target, { recursive: true, force: true })
-  return existsSync(join(target, 'lib', 'client.js'))
+  const plugin = DESKTOP_PLUGINS.find((item) => item.entryId === WINDOW_CONTROLS_ENTRY_ID)
+  if (plugin === undefined) return false
+  return installPluginPackage(plugin, home, profile)
 }
 
 /** Read the `version` field of a package manifest. */
@@ -127,44 +164,73 @@ function readPackageVersion(manifestPath: string): string | undefined {
   }
 }
 
-/** YAML patch block that inserts the window-controls loader entry. */
-function windowControlsPatchBlock(): string {
+/** YAML patch block that inserts one desktop-only loader entry. */
+function pluginPatchBlock(plugin: DesktopPluginSpec): string {
   return `- insert:
-    - id: ${WINDOW_CONTROLS_ENTRY_ID}
-      name: '${WINDOW_CONTROLS_PACKAGE}'
-      disabled: !!js ${WINDOW_CONTROLS_DISABLED_JS}
+    - id: ${plugin.entryId}
+      name: '${plugin.packageName}'
+      disabled: !!js ${DESKTOP_ONLY_DISABLED_JS}
 `
 }
 
 /**
- * If an older insert block lacks the desktop-only `disabled` expression,
- * append it. Leaves already-upgraded (or hand-edited) rows alone.
+ * If an older insert block for this plugin lacks the desktop-only `disabled`
+ * expression, append it. Leaves already-upgraded (or hand-edited) rows alone.
  */
-function withDesktopOnlyDisabled(content: string): string {
-  if (content.includes(WINDOW_CONTROLS_DISABLED_JS)) return content
-  const escapedPkg = WINDOW_CONTROLS_PACKAGE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function withDesktopOnlyDisabled(content: string, plugin: DesktopPluginSpec): string {
+  const escapedPkg = plugin.packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const already = new RegExp(
+    `-\\s*id:\\s*${plugin.entryId}\\r?\\n\\s*name:\\s*['"]${escapedPkg}['"]\\r?\\n\\s*disabled:`
+  ).test(content)
+  if (already) return content
   const pattern = new RegExp(
-    `(-\\s*id:\\s*${WINDOW_CONTROLS_ENTRY_ID}\\r?\\n\\s*name:\\s*['"]${escapedPkg}['"])`
+    `(-\\s*id:\\s*${plugin.entryId}\\r?\\n\\s*name:\\s*['"]${escapedPkg}['"])`
   )
   if (!pattern.test(content)) return content
-  return content.replace(pattern, `$1\n      disabled: !!js ${WINDOW_CONTROLS_DISABLED_JS}`)
+  return content.replace(pattern, `$1\n      disabled: !!js ${DESKTOP_ONLY_DISABLED_JS}`)
 }
 
 /**
- * Append the window-controls loader entry to the app profile's user patch
- * layer (`cordis.patch.yml`). The file is a top-level YAML array; appending a
- * top-level `- insert:` block is a valid additional element. Idempotent: an
- * existing entry is left in place (and upgraded with the desktop-only
- * `disabled` expression when missing), and user content is preserved. The
- * harness template ships `[]` as the (empty) array body — a `[]` that closes
- * the document cannot coexist with a following `- insert:` in one YAML
- * stream, so a trailing `[]` is replaced by the insert block (comments
- * before it are kept).
+ * Ensure one plugin's insert entry is in the patch text. Appends when missing,
+ * upgrades a legacy row that lacks `disabled`.
+ */
+function applyPluginPatch(content: string, plugin: DesktopPluginSpec): string {
+  if (content.includes(plugin.entryId)) {
+    return withDesktopOnlyDisabled(content, plugin)
+  }
+
+  const body = content.replace(/\s+$/, '')
+  const templateMatch = /\n?^\s*\[\]\s*$/m.exec(body)
+  const block = pluginPatchBlock(plugin)
+  if (templateMatch !== null) {
+    return `${body.slice(0, templateMatch.index).replace(/\s+$/, '')}\n${block}`
+  }
+  return `${body}\n${block}`
+}
+
+/**
+ * Append desktop plugin loader entries to the app profile's user patch
+ * layer (`cordis.patch.yml`). Idempotent: existing entries are left in place
+ * (and upgraded with the desktop-only `disabled` expression when missing),
+ * and user content is preserved. The harness template ships `[]` as the
+ * (empty) array body — a `[]` that closes the document cannot coexist with a
+ * following `- insert:` in one YAML stream, so a trailing `[]` is replaced
+ * by the first insert block (comments before it are kept).
  * @param home - the harness home.
  * @param profile - harness profile name (defaults to `dsh-desktop`).
- * @returns true when the patch now contains the entry (whether just written or already present).
+ * @returns true when the patch now contains every desktop plugin entry.
  */
 export function ensureWindowControlsPatch(
+  home: string = defaultDshHome(),
+  profile: string = APP_PROFILE
+): boolean {
+  return ensurePluginsPatch(home, profile)
+}
+
+/**
+ * Write every desktop plugin's insert entry into the profile patch layer.
+ */
+export function ensurePluginsPatch(
   home: string = defaultDshHome(),
   profile: string = APP_PROFILE
 ): boolean {
@@ -176,53 +242,47 @@ export function ensureWindowControlsPatch(
     content = ''
   }
 
-  if (content.includes(WINDOW_CONTROLS_ENTRY_ID)) {
-    const upgraded = withDesktopOnlyDisabled(content)
-    if (upgraded !== content) {
-      writeFileSync(patchPath, upgraded, 'utf8')
-    }
-    return true
+  let next = content
+  for (const plugin of DESKTOP_PLUGINS) {
+    next = applyPluginPatch(next, plugin)
   }
 
-  // A trailing empty-array document (the harness template's `[]`), possibly
-  // after comment lines, is replaced by the insert block. Anything else —
-  // user rows, other inserts — is preserved and the block appended.
-  const body = content.replace(/\s+$/, '')
-  const templateMatch = /\n?^\s*\[\]\s*$/m.exec(body)
-  const next =
-    templateMatch !== null
-      ? `${body.slice(0, templateMatch.index).replace(/\s+$/, '')}\n${windowControlsPatchBlock()}`
-      : `${body}\n${windowControlsPatchBlock()}`
-  mkdirSync(dirname(patchPath), { recursive: true })
-  writeFileSync(patchPath, next, 'utf8')
-  return true
+  if (next !== content) {
+    mkdirSync(dirname(patchPath), { recursive: true })
+    writeFileSync(patchPath, next, 'utf8')
+  }
+
+  return DESKTOP_PLUGINS.every((plugin) => next.includes(plugin.entryId))
 }
 
 /**
- * Full injection: install the package and ensure the patch entry, in that
- * order (the patch entry is inert until the package is resolvable).
+ * Full injection: install every package and ensure the patch entries, in that
+ * order (a patch entry is inert until its package is resolvable).
  * @param home - the harness home (defaults to `~/.dsh`).
  * @param profile - harness profile name (defaults to `dsh-desktop`).
- * @returns true when both steps succeeded.
+ * @returns true when every plugin is installed and patched.
  */
 export function ensurePluginsInstalled(
   home: string = defaultDshHome(),
   profile: string = APP_PROFILE
 ): boolean {
-  const installed = installWindowControlsPackage(home, profile)
-  const patched = ensureWindowControlsPatch(home, profile)
+  let installed = true
+  for (const plugin of DESKTOP_PLUGINS) {
+    if (!installPluginPackage(plugin, home, profile)) installed = false
+  }
+  const patched = ensurePluginsPatch(home, profile)
   return installed && patched
 }
 
 /**
- * Wait until the served index page's browser boot graph contains the
- * window-controls plugin. The harness's live patch reload re-scans loader
- * entries after our patch write and re-composes `__DSH_BOOT__`, but it is
+ * Wait until the served index page's browser boot graph contains every
+ * desktop plugin. The harness's live patch reload re-scans loader entries
+ * after our patch write and re-composes `__DSH_BOOT__`, but it is
  * asynchronous — polling the served page lets the window load a first paint
- * that already carries the window controls.
+ * that already carries the window controls (and the settings section).
  * @param url - the dsh web base URL.
  * @param timeoutMs - poll budget (default 25s).
- * @returns true when the plugin appeared in the graph within the budget.
+ * @returns true when every plugin appeared in the graph within the budget.
  */
 export async function waitForPluginInGraph(url: string, timeoutMs = 25_000): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
@@ -230,7 +290,7 @@ export async function waitForPluginInGraph(url: string, timeoutMs = 25_000): Pro
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(5_000) })
       const html = await response.text()
-      if (html.includes(WINDOW_CONTROLS_PACKAGE)) return true
+      if (DESKTOP_PLUGINS.every((plugin) => html.includes(plugin.packageName))) return true
     } catch {
       // Transient fetch errors (server still settling) — keep polling.
     }

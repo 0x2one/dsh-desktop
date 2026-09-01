@@ -5,7 +5,8 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
     "src/preload/*.d.ts",
-    "src/preload/update-api.ts"
+    "src/preload/update-api.ts",
+    "src/preload/desktop-api.ts"
   ],
   "compilerOptions": {
     "composite": true,

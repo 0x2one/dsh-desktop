@@ -77,7 +77,9 @@ const injected = await (async () => {
     const { readFileSync, existsSync } = await import('node:fs')
     const patch = readFileSync(join(PROFILE, 'cordis.patch.yml'), 'utf8')
     return existsSync(join(PROFILE, 'node_modules', '@dsh-desktop', 'window-controls', 'package.json'))
+      && existsSync(join(PROFILE, 'node_modules', '@dsh-desktop', 'settings', 'package.json'))
       && patch.includes('dsh-desktop-window-controls')
+      && patch.includes('dsh-desktop-settings')
   } catch {
     return false
   }

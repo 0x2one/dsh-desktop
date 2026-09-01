@@ -19,6 +19,12 @@ extraResources:
       - '**/*'
   - from: plugins/dsh-desktop-window-controls/package.json
     to: plugins/dsh-desktop-window-controls/package.json
+  - from: plugins/dsh-desktop-settings/lib
+    to: plugins/dsh-desktop-settings/lib
+    filter:
+      - '**/*'
+  - from: plugins/dsh-desktop-settings/package.json
+    to: plugins/dsh-desktop-settings/package.json
 win:
   # Process image, Task Manager, and the install folder all use this name.
   executableName: DeepSeek Harness Desktop

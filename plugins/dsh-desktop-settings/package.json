@@ -1,0 +1,41 @@
+{
+  "name": "@dsh-desktop/settings",
+  "version": "0.1.0",
+  "description": "dsh-desktop settings section (hotkey, launch-at-login, profiles, updates) in the DeepSeek Harness settings panel",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^1.0.0",
+    "@deepseek-ai/dsh-client-locale": "^0.1.0",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0",
+    "react": "^18.2.0"
+  }
+}

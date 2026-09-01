@@ -72,15 +72,17 @@ await build({
   external: ['electron'],
   logLevel: 'silent',
 })
-const { ensurePluginsInstalled, WINDOW_CONTROLS_ENTRY_ID } = await import(`${pathToFileURL(BUNDLED).href}?t=${Date.now()}`)
+const { ensurePluginsInstalled, WINDOW_CONTROLS_ENTRY_ID, SETTINGS_ENTRY_ID } = await import(`${pathToFileURL(BUNDLED).href}?t=${Date.now()}`)
 
 process.env.DSH_DESKTOP_PLUGINS_ROOT = join(ROOT, 'plugins')
 process.env.DSH_HOME = DSH_HOME
 
 step('plugin build artifacts exist', () => {
-  const client = join(ROOT, 'plugins', 'dsh-desktop-window-controls', 'lib', 'client.js')
-  const node = join(ROOT, 'plugins', 'dsh-desktop-window-controls', 'lib', 'index.js')
-  if (!existsSync(client) || !existsSync(node)) {
+  const wcClient = join(ROOT, 'plugins', 'dsh-desktop-window-controls', 'lib', 'client.js')
+  const wcNode = join(ROOT, 'plugins', 'dsh-desktop-window-controls', 'lib', 'index.js')
+  const settingsClient = join(ROOT, 'plugins', 'dsh-desktop-settings', 'lib', 'client.js')
+  const settingsNode = join(ROOT, 'plugins', 'dsh-desktop-settings', 'lib', 'index.js')
+  if (!existsSync(wcClient) || !existsSync(wcNode) || !existsSync(settingsClient) || !existsSync(settingsNode)) {
     throw new Error('run `pnpm run build:plugin` first')
   }
 })
@@ -91,11 +93,15 @@ step('injection runs', () => {
   if (!injected) throw new Error('ensurePluginsInstalled returned false')
 })
 
-step('plugin package copied into profile node_modules', () => {
-  const target = join(PROFILE, 'node_modules', '@dsh-desktop', 'window-controls', 'package.json')
-  if (!existsSync(target)) throw new Error(`missing ${target}`)
-  const manifest = JSON.parse(readFileSync(target, 'utf8'))
-  if (manifest.name !== '@dsh-desktop/window-controls') throw new Error('wrong package copied')
+step('plugin packages copied into profile node_modules', () => {
+  const wc = join(PROFILE, 'node_modules', '@dsh-desktop', 'window-controls', 'package.json')
+  const settings = join(PROFILE, 'node_modules', '@dsh-desktop', 'settings', 'package.json')
+  if (!existsSync(wc)) throw new Error(`missing ${wc}`)
+  if (!existsSync(settings)) throw new Error(`missing ${settings}`)
+  const wcManifest = JSON.parse(readFileSync(wc, 'utf8'))
+  const settingsManifest = JSON.parse(readFileSync(settings, 'utf8'))
+  if (wcManifest.name !== '@dsh-desktop/window-controls') throw new Error('wrong window-controls package copied')
+  if (settingsManifest.name !== '@dsh-desktop/settings') throw new Error('wrong settings package copied')
 })
 
 step('template [] replaced, comment header kept', () => {
@@ -103,6 +109,7 @@ step('template [] replaced, comment header kept', () => {
   if (!patch.includes('Your patch layer')) throw new Error('comment header was removed')
   if (patch.includes('[]')) throw new Error('empty [] array still present — invalid YAML with following rows')
   if (!patch.includes(WINDOW_CONTROLS_ENTRY_ID)) throw new Error('window-controls entry missing')
+  if (!patch.includes(SETTINGS_ENTRY_ID)) throw new Error('settings entry missing')
   if (!patch.includes('- insert:')) throw new Error('insert block missing')
   if (!patch.includes("process.env.DSH_DESKTOP !== '1'")) throw new Error('desktop-only disabled expression missing')
 })
@@ -119,8 +126,9 @@ step('legacy insert is upgraded with desktop-only disabled', () => {
   if (!ensurePluginsInstalled(DSH_HOME)) throw new Error('upgrade injection failed')
   const after = readFileSync(join(PROFILE, 'cordis.patch.yml'), 'utf8')
   if (!after.includes("process.env.DSH_DESKTOP !== '1'")) throw new Error('disabled expression not added')
-  const count = after.split(WINDOW_CONTROLS_ENTRY_ID).length - 1
-  if (count !== 1) throw new Error(`entry appears ${count} times after upgrade`)
+  const wcCount = after.split(WINDOW_CONTROLS_ENTRY_ID).length - 1
+  if (wcCount !== 1) throw new Error(`window-controls entry appears ${wcCount} times after upgrade`)
+  if (!after.includes(SETTINGS_ENTRY_ID)) throw new Error('settings entry missing after upgrade')
 })
 
 step('user rows appended later are preserved across injection', () => {
@@ -147,8 +155,10 @@ step('user rows appended later are preserved across injection', () => {
   const after = readFileSync(join(PROFILE, 'cordis.patch.yml'), 'utf8')
   if (!after.includes('mcp-context7')) throw new Error('user MCP entry was removed')
   if (!after.includes('dsh-any-background')) throw new Error('user disabled row was removed')
-  const count = after.split(WINDOW_CONTROLS_ENTRY_ID).length - 1
-  if (count !== 1) throw new Error(`entry appears ${count} times, expected 1`)
+  const wcCount = after.split(WINDOW_CONTROLS_ENTRY_ID).length - 1
+  if (wcCount !== 1) throw new Error(`window-controls entry appears ${wcCount} times, expected 1`)
+  const settingsCount = after.split(SETTINGS_ENTRY_ID).length - 1
+  if (settingsCount !== 1) throw new Error(`settings entry appears ${settingsCount} times, expected 1`)
 })
 
 step('injection is idempotent (third run appends nothing)', () => {
@@ -194,9 +204,12 @@ const ready = new Promise((resolve, reject) => {
 let boot = null
 try {
   boot = await ready
-  step('dsh web boots with the injected plugin present', () => {
+  step('dsh web boots with the injected plugins present', () => {
     if (boot.stderr.includes('window-controls') && boot.stderr.includes('failed')) {
       throw new Error(`loader reported a window-controls failure:\n${boot.stderr}`)
+    }
+    if (boot.stderr.includes('dsh-desktop-settings') && boot.stderr.includes('failed')) {
+      throw new Error(`loader reported a settings plugin failure:\n${boot.stderr}`)
     }
   })
 } finally {

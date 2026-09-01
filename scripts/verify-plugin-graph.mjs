@@ -84,18 +84,24 @@ let boot = null
 try {
   boot = await ready
   const html = await (await fetch(boot.url)).text()
-  const found = html.includes('@dsh-desktop/window-controls')
+  const foundWc = html.includes('@dsh-desktop/window-controls')
+  const foundSettings = html.includes('@dsh-desktop/settings')
   const graph = /globalThis\["__DSH_BOOT__"\] = (.+?)(?:<\/script>|$)/s.exec(html)?.[1]
   const windowControlsRows = graph !== undefined
     ? (graph.match(/@dsh-desktop\/window-controls/g) ?? [])
     : []
-  console.log(`plugin id in served HTML: ${found}`)
-  console.log(`__DSH_BOOT__ occurrences of the plugin id: ${windowControlsRows.length}`)
-  if (!found || windowControlsRows.length === 0) {
-    console.error('FAIL: window-controls plugin is not in the browser boot graph')
+  const settingsRows = graph !== undefined
+    ? (graph.match(/@dsh-desktop\/settings/g) ?? [])
+    : []
+  console.log(`window-controls in served HTML: ${foundWc}`)
+  console.log(`settings in served HTML: ${foundSettings}`)
+  console.log(`__DSH_BOOT__ occurrences of window-controls: ${windowControlsRows.length}`)
+  console.log(`__DSH_BOOT__ occurrences of settings: ${settingsRows.length}`)
+  if (!foundWc || windowControlsRows.length === 0 || !foundSettings || settingsRows.length === 0) {
+    console.error('FAIL: a desktop plugin is not in the browser boot graph')
     process.exitCode = 1
   } else {
-    console.log('PASS: plugin composed into the browser boot graph')
+    console.log('PASS: plugins composed into the browser boot graph')
   }
 } finally {
   if (boot?.child) {

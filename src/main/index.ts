@@ -6,6 +6,8 @@ import { PRODUCT_NAME } from './app-name'
 import { checkRuntimeRequirements } from './requirements'
 import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
+import { registerDesktopSettings, type DesktopSettingsIpc } from './desktop-settings'
+import type { DesktopSnapshot } from '../preload/desktop-api'
 import { ensurePluginsInstalled, waitForPluginInGraph, defaultDshHome } from './plugin-install'
 import {
   prepareAppProfile,
@@ -16,7 +18,7 @@ import {
 } from './profile-setup'
 import { ensureMarketInstalled } from './plugin-market'
 import { createAppTray, type AppTray } from './tray'
-import { loadPreferredProfile, savePreferredProfile } from './profile-pref'
+import { listProfiles, loadPreferredProfile, savePreferredProfile } from './profile-pref'
 import { promptProfileName } from './profile-prompt'
 import { promptToggleHotkey } from './hotkey-prompt'
 import { getToggleAcceleratorLabel, startToggleHotkey, stopToggleHotkey } from './global-hotkey'
@@ -25,11 +27,7 @@ import { closeUpdateWindow } from './update-window'
 import { installAppMenu } from './menu'
 import { applyDeferredMaximize, applyWindowState, flushAndStopWindowState } from './window-state'
 import { showCloseToTrayHint } from './app-notify'
-import {
-  isLaunchAtLoginEnabled,
-  setLaunchAtLogin,
-  shouldStartHidden
-} from './launch-at-login'
+import { isLaunchAtLoginEnabled, setLaunchAtLogin, shouldStartHidden } from './launch-at-login'
 
 // Point the plugin installer at the built plugin tree. In development this is
 // the repository checkout; packaged builds set resourcesPath and the installer
@@ -48,6 +46,7 @@ if (!gotTheLock) {
   let quitRequested = false
   let appTray: AppTray | null = null
   let appUpdater: AppUpdater | null = null
+  let desktopSettings: DesktopSettingsIpc | null = null
   let activeProfile = APP_PROFILE
   let switchingProfile = false
   // Set during app.whenReady before any window/service starts; a false value
@@ -76,6 +75,20 @@ if (!gotTheLock) {
     showMainWindow()
   }
 
+  function syncDesktopChrome(currentProfile?: string): void {
+    appTray?.refresh(currentProfile)
+    desktopSettings?.broadcast()
+  }
+
+  function desktopSnapshot(): DesktopSnapshot {
+    return {
+      hotkeyLabel: getToggleAcceleratorLabel(),
+      launchAtLogin: isLaunchAtLoginEnabled(),
+      profiles: listProfiles(),
+      currentProfile: activeProfile
+    }
+  }
+
   function loadLocalRenderer(error?: string): void {
     if (mainWindow === null || mainWindow.isDestroyed()) return
     const window = mainWindow
@@ -96,7 +109,7 @@ if (!gotTheLock) {
       await dshService.restart(name)
       savePreferredProfile(name)
       activeProfile = name
-      appTray?.refresh(name)
+      syncDesktopChrome(name)
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
       console.error('[dsh-desktop] profile switch failed:', error)
@@ -111,11 +124,11 @@ if (!gotTheLock) {
         await dshService.restart(previous)
         savePreferredProfile(previous)
         activeProfile = previous
-        appTray?.refresh(previous)
+        syncDesktopChrome(previous)
       } catch (restartError) {
         console.error('[dsh-desktop] failed to restore previous profile:', restartError)
         loadLocalRenderer(`Failed to switch to "${name}" and could not restore "${previous}".`)
-        appTray?.refresh(dshService.getProfile())
+        syncDesktopChrome(dshService.getProfile())
       }
     } finally {
       switchingProfile = false
@@ -130,7 +143,7 @@ if (!gotTheLock) {
     try {
       const name = normalizeProfileName(raw)
       createHarnessProfile(name)
-      appTray?.refresh()
+      syncDesktopChrome()
 
       // Same bootstrap as first-launch `dsh-desktop`: install dshmarket so the
       // plugin market is present when this profile boots. pnpm may take minutes.
@@ -235,10 +248,29 @@ if (!gotTheLock) {
       return { action: 'deny' }
     })
 
-    // Register window-control IPC before any page can call it.
+    // Register window-control and desktop-settings IPC before any page can call them.
     const disposeControls = registerWindowControls(window)
+    desktopSettings = registerDesktopSettings(window, {
+      getSnapshot: desktopSnapshot,
+      editHotkey: async (): Promise<boolean> => {
+        const changed = await promptToggleHotkey(window)
+        if (changed) syncDesktopChrome()
+        return changed
+      },
+      setLaunchAtLogin: (enabled): void => {
+        setLaunchAtLogin(enabled)
+        syncDesktopChrome()
+      },
+      selectProfile: (name) => switchProfile(name),
+      createProfile: () => createNewProfile(),
+      checkUpdate: (): void => {
+        appUpdater?.checkForUpdates()
+      }
+    })
     window.on('closed', () => {
       disposeControls()
+      desktopSettings?.dispose()
+      desktopSettings = null
       flushAndStopWindowState()
       mainWindow = null
     })
@@ -296,13 +328,12 @@ if (!gotTheLock) {
         dshService = new DshService(
           {
             onReady: (url) => {
-              // Inject the window-controls plugin into the active harness
+              // Inject the desktop cordis plugins into the active harness
               // profile, then wait for the harness's live patch reload to fold
-              // the plugin into the browser boot graph before loading the
-              // window — the first paint then already shows the window
-              // controls. On timeout (or when the injection is skipped because
-              // the plugin is already installed) the window still loads; the
-              // plugin appears after the next reload.
+              // them into the browser boot graph before loading the window —
+              // the first paint then already shows the window controls and the
+              // Desktop settings section. On timeout (or when injection is
+              // skipped) the window still loads; plugins appear after reload.
               void (async () => {
                 try {
                   const profile = dshService?.getProfile() ?? activeProfile
@@ -403,7 +434,7 @@ if (!gotTheLock) {
       getHotkeyLabel: getToggleAcceleratorLabel,
       onEditHotkey: () => {
         void promptToggleHotkey(mainWindow).then((changed) => {
-          if (changed) appTray?.refresh()
+          if (changed) syncDesktopChrome()
         })
       },
       onSelectProfile: (name) => {
@@ -415,8 +446,9 @@ if (!gotTheLock) {
       launchAtLogin: isLaunchAtLoginEnabled,
       onToggleLaunchAtLogin: (enabled) => {
         setLaunchAtLogin(enabled)
-        // Rebuild so the 开启 / 关闭 radio reflects the new state.
-        appTray?.refresh()
+        // Rebuild so the 开启 / 关闭 radio reflects the new state, and push
+        // the same snapshot to the settings plugin if the window is open.
+        syncDesktopChrome()
       },
       onCheckUpdate: () => {
         appUpdater?.checkForUpdates()

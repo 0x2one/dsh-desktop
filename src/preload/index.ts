@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { DESKTOP_CHANNELS, type DesktopApi, type DesktopSnapshot } from './desktop-api'
 import { UPDATE_CHANNELS, type UpdateState, type UpdaterApi } from './update-api'
 
 // Tag the document with the platform before the page renders: the window
@@ -64,7 +65,28 @@ const api = {
     dismiss: (): void => {
       ipcRenderer.send(UPDATE_CHANNELS.dismiss)
     }
-  } satisfies UpdaterApi
+  } satisfies UpdaterApi,
+  desktop: {
+    getSnapshot: (): Promise<DesktopSnapshot> => ipcRenderer.invoke(DESKTOP_CHANNELS.getSnapshot),
+    editHotkey: (): Promise<boolean> => ipcRenderer.invoke(DESKTOP_CHANNELS.editHotkey),
+    setLaunchAtLogin: (enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.setLaunchAtLogin, enabled),
+    selectProfile: (name: string): Promise<void> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.selectProfile, name),
+    createProfile: (): Promise<void> => ipcRenderer.invoke(DESKTOP_CHANNELS.createProfile),
+    checkUpdate: (): void => {
+      ipcRenderer.send(DESKTOP_CHANNELS.checkUpdate)
+    },
+    onChange: (callback: (snapshot: DesktopSnapshot) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, snapshot: DesktopSnapshot): void => {
+        callback(snapshot)
+      }
+      ipcRenderer.on(DESKTOP_CHANNELS.changed, listener)
+      return () => {
+        ipcRenderer.removeListener(DESKTOP_CHANNELS.changed, listener)
+      }
+    }
+  } satisfies DesktopApi
 }
 
 export type WindowControlsApi = typeof api

@@ -12,20 +12,24 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 │  │                    web --no-open --port 0      │
 │  ├─ plugin-market.ts  启动时检查 dshmarket，缺失则  │
 │  │                    dsh plugin add（阻塞装完）   │
-│  ├─ plugin-install.ts 把窗口操作栏 cordis 插件      │
-│  │                    注入 ~/.dsh/profiles/dsh-desktop │
+│  ├─ plugin-install.ts 把桌面 cordis 插件（窗口操作栏、设置）  │
+│  │                    注入 ~/.dsh/profiles/<profile>           │
 │  ├─ window-controls.ts IPC：最小化/最大化/关闭      │
+│  ├─ desktop-settings.ts IPC：快捷键/自启/环境/更新   │
 │  └─ index.ts          组装以上模块                 │
 ├─────────────────────────────────────────────────┤
 │ dsh web（独立 Node 子进程）                        │
 │  └─ @deepseek-ai/dsh@0.1.1-rc.2 --profile dsh-desktop │
 │     ├─ 浏览器前端（vite 产物，__DSH_BOOT__ 注入）   │
-│     └─ @dsh-desktop/window-controls（cordis 插件） │
-│        浏览器端注册到 shell.overlay slot → 内容栏   │
-│        右上方操作栏 → window.api.windowControls→IPC│
-│        + 内容栏顶部 40px 拖拽条（app-region: drag）│
+│     ├─ @dsh-desktop/window-controls（cordis 插件） │
+│     │  浏览器端注册到 shell.overlay slot → 内容栏   │
+│     │  右上方操作栏 → window.api.windowControls→IPC│
+│     │  + 内容栏顶部 40px 拖拽条（app-region: drag）│
+│     └─ @dsh-desktop/settings（cordis 插件）        │
+│        浏览器端注册到 settings.section →「桌面」分区│
+│        → window.api.desktop → IPC（与托盘同一套逻辑）│
 ├─────────────────────────────────────────────────┤
-│ preload (src/preload)  暴露 window.api.windowControls
+│ preload (src/preload)  暴露 window.api.windowControls / desktop
 └─────────────────────────────────────────────────┘
 ```
 
@@ -35,7 +39,7 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 |---|---|
 | 1. 启动检查 Node/pnpm | `src/main/requirements.ts`：spawn `node --version` / `pnpm --version`，缺失或版本不满足（dsh engines `^22.19 || >=24`）时弹窗提示安装指引 |
 | 2. `npx @deepseek-ai/dsh web` 集成，固定 0.1.1-rc.2 | `src/main/dsh-service.ts`：`npx --yes @deepseek-ai/dsh@0.1.1-rc.2 --profile dsh-desktop --no-open --port 0`，解析 `dsh web: http://...` 就绪行 |
-| 3. 优化调整走 cordis 插件 | `plugins/dsh-desktop-window-controls/`：不改 deepseek-harness 源码，全部通过公开 slot 注册 |
+| 3. 优化调整走 cordis 插件 | `plugins/dsh-desktop-window-controls/`（窗口操作栏）+ `plugins/dsh-desktop-settings/`（设置「桌面」分区）；不改 deepseek-harness 源码，全部通过公开 slot 注册 |
 | 4. profiles 默认路径 + 专属 app profile + 共享本地环境 | **专属 profile `~/.dsh/profiles/dsh-desktop`**（`src/main/profile-setup.ts` 程序化创建，不跑 pnpm）；与用户 `web` profile 隔离，通过 `profiles/node_modules` 共享层复用 dsh 已安装依赖（同一套环境）；插件构建产物、注入器、验证脚本都在本仓库 |
 | 5. 隐藏原生操作栏 + 右上角自定义操作栏 | `frame: false` + cordis 插件渲染到 `shell.overlay`（右上角），经 IPC 驱动窗口 |
 | 6. 最大化兼容、不改源码 | 插件通过 `dsh.client` 声明被发现，patch 层 `cordis.patch.yml` 注入 entry |
@@ -51,19 +55,26 @@ src/main/
   profile-setup.ts  专属 profile（dsh-desktop）程序化创建，复用共享依赖
   plugin-install.ts 插件注入（复制包 + patch 幂等追加 + 等待 boot 图就绪）
   window-controls.ts 窗口控制 IPC（minimize/toggleMaximize/close/isMaximized）
+  desktop-settings.ts 桌面设置 IPC（快捷键/自启/环境/检查更新，与托盘共用逻辑）
   settings.ts       共享设置（settings.json 读写，merge-write 保留未知键）
   window-state.ts   窗口大小/位置/最大化记忆（恢复 + 防越界 + 防抖保存）
   app-notify.ts     首次关闭到托盘的一次性系统通知
   launch-at-login.ts 开机自启（app.setLoginItemSettings）+ --hidden 静默启动
 src/preload/
-  index.ts          contextBridge 暴露 window.api.windowControls
+  index.ts          contextBridge 暴露 window.api.windowControls / desktop
   index.d.ts        类型声明
+  desktop-api.ts    桌面设置 IPC 契约（snapshot + 通道名）
 src/renderer/       本地兜底页（服务启动失败/开发期）
 plugins/dsh-desktop-window-controls/
   package.json      声明 dsh.client（platform: web）
   src/index.ts      node half（空 apply，供 Loader 挂 entry）
   src/client/       浏览器端：注册 shell.overlay + WindowControls 组件
   build.mjs         esbuild 构建（node ESM + 浏览器 CJS 工厂格式）
+plugins/dsh-desktop-settings/
+  package.json      声明 dsh.client（inject ui-settings + locale）
+  src/index.ts      node half（空 apply）
+  src/client/       浏览器端：注册 settings.section「桌面」分区
+  build.mjs         同上构建契约
 scripts/
   verify-plugin-injection.mjs  注入 + 幂等 + 真实 dsh boot
   verify-plugin-graph.mjs      插件进入 __DSH_BOOT__ 图
@@ -93,12 +104,14 @@ scripts/
 - Windows 上 npx 是 `.cmd`，spawn 需要 `shell: true`；退出用 `taskkill /T /F` 杀进程树。
 
 ### 插件注入（不碰 dsh 源码）
-1. 构建插件 → `plugins/dsh-desktop-window-controls/lib/`（esbuild）。
-2. 复制到 `~/.dsh/profiles/dsh-desktop/node_modules/@dsh-desktop/window-controls/`（profile 的 hoisted 扁平 node_modules 可被 Loader 按裸名解析）。
-3. 在 `~/.dsh/profiles/dsh-desktop/cordis.patch.yml` 幂等追加 `- insert:` 块。
+1. 构建插件 → `plugins/dsh-desktop-window-controls/lib/` 与 `plugins/dsh-desktop-settings/lib/`（esbuild）。
+2. 复制到 profile `node_modules/@dsh-desktop/window-controls/` 与 `.../settings/`（profile 的 hoisted 扁平 node_modules 可被 Loader 按裸名解析）。
+3. 在 `cordis.patch.yml` 幂等追加两个 `- insert:` 块（均带 `disabled: !!js process.env.DSH_DESKTOP !== '1'`）。
    - 模板文件结尾的 `[]` 必须替换（`[]` 是完整 YAML 文档，后面不能再跟行）。
    - 已有用户内容（MCP 配置等）保留。
-4. `waitForPluginInGraph` 轮询服务页面直到 `__DSH_BOOT__` 含插件 id（live patch reload 自动重扫），窗口首屏即带操作栏。
+4. `waitForPluginInGraph` 轮询服务页面直到 `__DSH_BOOT__` 含两个插件 id（live patch reload 自动重扫），窗口首屏即带操作栏与设置分区。
+
+控制台 `dsh --profile dsh-desktop` 不设 `DSH_DESKTOP=1`，loader 禁用这些 entry；即便 patch 未 gate，浏览器 half 检测不到 `window.api.windowControls` / `window.api.desktop` 也会 no-op。
 
 ### dshmarket 插件市场自动安装
 - 应用跑在专属 `dsh-desktop` profile，市场插件只有装进该 profile 才会出现在桌面 UI 中——**不碰用户 `web` profile**（用户自己的 `web` profile 里若已装 dshmarket 也与本应用无关）。
@@ -142,6 +155,7 @@ scripts/
 - **窗口状态记忆**（`src/main/window-state.ts`）：`BrowserWindow` 创建后、`ready-to-show` 前调用 `applyWindowState`——从设置读取 bounds + 最大化标志，用 `screen.getAllDisplays()` 校验（与任一显示器工作区有交集、不小于 900×600，否则回退默认 1280×800 居中）；`resize`/`move`（防抖 500ms）/`maximize`/`unmaximize` 保存 `getNormalBounds()`（最大化时不会保存虚化矩形）；`close` 时立即 flush，`before-quit` 再兜底 flush。`maximize()` 会把 `show: false` 的窗口显示出来，因此 restore **从不** 调用它：普通启动在 `ready-to-show`、静默启动在第一次 `showMainWindow` 时再 `applyDeferredMaximize()`；flush 仍把 deferred 的最大化标志写回设置。
 - **首次关闭提示**（`src/main/app-notify.ts`）：第一次关闭到托盘时弹系统 `Notification`（「点击托盘图标可恢复；如需退出请用托盘菜单」），点击通知恢复窗口；`closeToTrayHintShown` 置位后不再提示。`Notification.isSupported()` 为 false 时静默跳过并直接置位（不重复尝试）。
 - **开机自启 + 静默启动**（`src/main/launch-at-login.ts`）：托盘「开机自启」二级菜单（开启 / 关闭，与「启动环境」相同的 radio 形式），意图存 `launchAtLogin`。勾选状态以意图为准，系统侧仍在启动则也显示为开。Windows：`setLoginItemSettings({ openAtLogin, enabled, args: ['--hidden'] })`。macOS：只设 `openAtLogin`，静默启动看 `wasOpenedAtLogin`。Linux：不调登录项 API。`shouldStartHidden` 只作用于**第一扇**窗口。手动启动或二次实例走 `showMainWindow`。注册失败时回滚设置。
+- **设置「桌面」分区**（`plugins/dsh-desktop-settings/`）：向 harness `settings.section` 注册独立页（order 5，插在「通用」与「模型」之间），提供与托盘相同的快捷键 / 开机自启 / 启动环境 / 检查更新（不含显示窗口、退出）。经 `window.api.desktop` IPC 调用主进程已有实现，改完后 `syncDesktopChrome` 刷新托盘并广播 snapshot，两边保持一致。托盘菜单本身不删减。
 
 ## 验证
 
