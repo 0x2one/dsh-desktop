@@ -1,7 +1,8 @@
 /**
- * Singleton frameless window that hosts the update UI.
+ * Singleton frameless window that hosts the update UI (tray "检查更新").
  *
- * The main window loads dsh web, so the prompt cannot live in that renderer.
+ * State is also broadcast to every other BrowserWindow so the Desktop
+ * settings page can render the same phases inline via `window.api.updater`.
  * This window is parented when the main window is visible; from the tray it
  * stands alone.
  *
@@ -47,6 +48,15 @@ function pushToWindow(): void {
   win.webContents.send(UPDATE_CHANNELS.state, pendingState)
 }
 
+function broadcastToAppWindows(): void {
+  if (pendingState === null) return
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (win !== null && w === win) continue
+    if (w.isDestroyed()) continue
+    w.webContents.send(UPDATE_CHANNELS.state, pendingState)
+  }
+}
+
 /**
  * Register callbacks for buttons in the update window.
  */
@@ -55,10 +65,11 @@ export function setUpdateWindowHandlers(next: UpdateWindowHandlers): void {
   bindIpc()
 }
 
-/** Push UI state; creates nothing. Call {@link showUpdateWindow} to present. */
+/** Push UI state to the update window (if open) and the main renderer. */
 export function pushUpdateState(state: UpdateState): void {
   pendingState = state
   pushToWindow()
+  broadcastToAppWindows()
 }
 
 export function closeUpdateWindow(): void {

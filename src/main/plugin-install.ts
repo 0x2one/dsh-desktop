@@ -17,7 +17,7 @@
  * @module dsh-desktop/plugin-install
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import {
   APP_PROFILE,
@@ -119,7 +119,9 @@ export function pluginBuildExists(): boolean {
 
 /**
  * Copy one built plugin package into the profile's node_modules.
- * Idempotent: an existing install with the same package version is left alone.
+ * Recopies when the package version or the built `lib/client.js` bytes differ
+ * (same version with a rebuilt bundle used to be skipped, leaving profiles
+ * on a stale client that still called removed IPC).
  */
 function installPluginPackage(plugin: DesktopPluginSpec, home: string, profile: string): boolean {
   const source = join(pluginsSourceRoot(), plugin.rel)
@@ -130,13 +132,29 @@ function installPluginPackage(plugin: DesktopPluginSpec, home: string, profile: 
   const targetManifest = join(target, 'package.json')
   const sourceVersion = readPackageVersion(sourceManifest)
   const targetVersion = existsSync(targetManifest) ? readPackageVersion(targetManifest) : undefined
-  if (targetVersion === sourceVersion && existsSync(join(target, 'lib', 'client.js'))) {
+  if (
+    targetVersion === sourceVersion &&
+    existsSync(join(target, 'lib', 'client.js')) &&
+    clientBundleMatches(source, target)
+  ) {
     return true
   }
 
   mkdirSync(dirname(target), { recursive: true })
   cpSync(source, target, { recursive: true, force: true })
   return existsSync(join(target, 'lib', 'client.js'))
+}
+
+/** True when source and target `lib/client.js` are byte-identical. */
+function clientBundleMatches(source: string, target: string): boolean {
+  const src = join(source, 'lib', 'client.js')
+  const dst = join(target, 'lib', 'client.js')
+  if (!existsSync(src) || !existsSync(dst)) return false
+  try {
+    return readFileSync(src).equals(readFileSync(dst))
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -267,11 +285,37 @@ export function ensurePluginsInstalled(
   profile: string = APP_PROFILE
 ): boolean {
   let installed = true
-  for (const plugin of DESKTOP_PLUGINS) {
-    if (!installPluginPackage(plugin, home, profile)) installed = false
+  let patched = true
+  for (const name of profilesToInject(home, profile)) {
+    for (const plugin of DESKTOP_PLUGINS) {
+      if (!installPluginPackage(plugin, home, name)) installed = false
+    }
+    if (!ensurePluginsPatch(home, name)) patched = false
   }
-  const patched = ensurePluginsPatch(home, profile)
   return installed && patched
+}
+
+/**
+ * The booting profile plus any sibling that already has a desktop plugin
+ * copy (those copies go stale when we rebuild without bumping the package
+ * version).
+ */
+function profilesToInject(home: string, primary: string): string[] {
+  const names = new Set<string>([primary])
+  const root = join(home, 'profiles')
+  if (!existsSync(root)) return [...names]
+  try {
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === 'node_modules') continue
+      const hasDesktopPlugin = DESKTOP_PLUGINS.some((plugin) =>
+        existsSync(join(root, entry.name, 'node_modules', plugin.packageName, 'package.json'))
+      )
+      if (hasDesktopPlugin) names.add(entry.name)
+    }
+  } catch {
+    return [...names]
+  }
+  return [...names]
 }
 
 /**

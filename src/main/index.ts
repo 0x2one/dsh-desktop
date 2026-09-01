@@ -7,7 +7,7 @@ import { checkRuntimeRequirements } from './requirements'
 import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
 import { registerDesktopSettings, type DesktopSettingsIpc } from './desktop-settings'
-import type { DesktopSnapshot } from '../preload/desktop-api'
+import type { CreateProfileResult, DesktopSnapshot } from '../preload/desktop-api'
 import { ensurePluginsInstalled, waitForPluginInGraph, defaultDshHome } from './plugin-install'
 import {
   prepareAppProfile,
@@ -21,7 +21,18 @@ import { createAppTray, type AppTray } from './tray'
 import { listProfiles, loadPreferredProfile, savePreferredProfile } from './profile-pref'
 import { promptProfileName } from './profile-prompt'
 import { promptToggleHotkey } from './hotkey-prompt'
-import { getToggleAcceleratorLabel, startToggleHotkey, stopToggleHotkey } from './global-hotkey'
+import {
+  DEFAULT_TOGGLE_ACCELERATOR,
+  acceleratorFromKeyEvent,
+  getToggleAccelerator,
+  getToggleAcceleratorLabel,
+  pauseToggleHotkey,
+  resumeToggleHotkey,
+  setToggleAccelerator,
+  startToggleHotkey,
+  stopToggleHotkey,
+  toDisplayLabel
+} from './global-hotkey'
 import { startAutoUpdater, type AppUpdater } from './updater'
 import { closeUpdateWindow } from './update-window'
 import { installAppMenu } from './menu'
@@ -85,7 +96,8 @@ if (!gotTheLock) {
       hotkeyLabel: getToggleAcceleratorLabel(),
       launchAtLogin: isLaunchAtLoginEnabled(),
       profiles: listProfiles(),
-      currentProfile: activeProfile
+      currentProfile: activeProfile,
+      appVersion: app.getVersion()
     }
   }
 
@@ -135,11 +147,10 @@ if (!gotTheLock) {
     }
   }
 
-  async function createNewProfile(): Promise<void> {
-    if (switchingProfile || quitRequested) return
-    showMainWindow()
-    const raw = await promptProfileName(mainWindow)
-    if (raw === null || raw.trim() === '') return
+  async function createProfileWithName(raw: string): Promise<CreateProfileResult> {
+    if (switchingProfile || quitRequested) {
+      return { ok: false, error: '正在切换环境，请稍后再试' }
+    }
     try {
       const name = normalizeProfileName(raw)
       createHarnessProfile(name)
@@ -149,29 +160,46 @@ if (!gotTheLock) {
       // plugin market is present when this profile boots. pnpm may take minutes.
       loadLocalRenderer()
       switchingProfile = true
+      let warning: string | undefined
       try {
         const market = await ensureMarketInstalled(undefined, name)
         if (!market.installed && market.error !== undefined) {
-          void dialog.showMessageBox({
-            type: 'warning',
-            title: '插件市场安装失败',
-            message: `未能在环境「${name}」中安装 dshmarket`,
-            detail: `${market.error}\n\n环境已创建，可稍后重试安装。`,
-            buttons: ['OK']
-          })
+          warning = `未能在环境「${name}」中安装 dshmarket\n\n${market.error}\n\n环境已创建，可稍后重试安装。`
         }
       } finally {
         switchingProfile = false
       }
 
       await switchProfile(name)
+      return warning === undefined ? { ok: true } : { ok: true, warning }
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
+      return { ok: false, error: detail }
+    }
+  }
+
+  async function createNewProfile(): Promise<void> {
+    if (switchingProfile || quitRequested) return
+    showMainWindow()
+    const raw = await promptProfileName(mainWindow)
+    if (raw === null || raw.trim() === '') return
+    const result = await createProfileWithName(raw)
+    if (!result.ok) {
       void dialog.showMessageBox({
         type: 'error',
         title: '无法创建环境',
         message: '新环境没有创建成功',
-        detail,
+        detail: result.error,
+        buttons: ['OK']
+      })
+      return
+    }
+    if (result.warning !== undefined) {
+      void dialog.showMessageBox({
+        type: 'warning',
+        title: '插件市场安装失败',
+        message: '未能安装 dshmarket',
+        detail: result.warning,
         buttons: ['OK']
       })
     }
@@ -252,19 +280,37 @@ if (!gotTheLock) {
     const disposeControls = registerWindowControls(window)
     desktopSettings = registerDesktopSettings(window, {
       getSnapshot: desktopSnapshot,
-      editHotkey: async (): Promise<boolean> => {
-        const changed = await promptToggleHotkey(window)
-        if (changed) syncDesktopChrome()
-        return changed
+      beginHotkeyCapture: () => {
+        pauseToggleHotkey()
+        const accelerator = getToggleAccelerator()
+        return {
+          accelerator,
+          label: toDisplayLabel(accelerator),
+          defaultAccelerator: DEFAULT_TOGGLE_ACCELERATOR,
+          defaultLabel: toDisplayLabel(DEFAULT_TOGGLE_ACCELERATOR)
+        }
+      },
+      previewHotkey: (parts) => {
+        const accelerator = acceleratorFromKeyEvent(parts)
+        if (accelerator === null) return null
+        return { accelerator, label: toDisplayLabel(accelerator) }
+      },
+      commitHotkey: (accelerator) => {
+        const result = setToggleAccelerator(accelerator)
+        if (result.ok) syncDesktopChrome()
+        return result
+      },
+      cancelHotkeyCapture: (): void => {
+        resumeToggleHotkey()
       },
       setLaunchAtLogin: (enabled): void => {
         setLaunchAtLogin(enabled)
         syncDesktopChrome()
       },
       selectProfile: (name) => switchProfile(name),
-      createProfile: () => createNewProfile(),
+      createProfile: (name) => createProfileWithName(name),
       checkUpdate: (): void => {
-        appUpdater?.checkForUpdates()
+        appUpdater?.checkForUpdates({ window: false })
       }
     })
     window.on('closed', () => {

@@ -1,6 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { DESKTOP_CHANNELS, type DesktopApi, type DesktopSnapshot } from './desktop-api'
+import {
+  DESKTOP_CHANNELS,
+  type CreateProfileResult,
+  type DesktopApi,
+  type DesktopSnapshot,
+  type HotkeyCaptureState,
+  type HotkeyKeyEvent,
+  type HotkeyPreview,
+  type SetHotkeyResult
+} from './desktop-api'
 import { UPDATE_CHANNELS, type UpdateState, type UpdaterApi } from './update-api'
 
 // Tag the document with the platform before the page renders: the window
@@ -68,12 +77,20 @@ const api = {
   } satisfies UpdaterApi,
   desktop: {
     getSnapshot: (): Promise<DesktopSnapshot> => ipcRenderer.invoke(DESKTOP_CHANNELS.getSnapshot),
-    editHotkey: (): Promise<boolean> => ipcRenderer.invoke(DESKTOP_CHANNELS.editHotkey),
+    beginHotkeyCapture: (): Promise<HotkeyCaptureState> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.beginHotkeyCapture),
+    previewHotkey: (parts: HotkeyKeyEvent): Promise<HotkeyPreview | null> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.previewHotkey, parts),
+    commitHotkey: (accelerator: string): Promise<SetHotkeyResult> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.commitHotkey, accelerator),
+    cancelHotkeyCapture: (): Promise<void> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.cancelHotkeyCapture),
     setLaunchAtLogin: (enabled: boolean): Promise<void> =>
       ipcRenderer.invoke(DESKTOP_CHANNELS.setLaunchAtLogin, enabled),
     selectProfile: (name: string): Promise<void> =>
       ipcRenderer.invoke(DESKTOP_CHANNELS.selectProfile, name),
-    createProfile: (): Promise<void> => ipcRenderer.invoke(DESKTOP_CHANNELS.createProfile),
+    createProfile: (name: string): Promise<CreateProfileResult> =>
+      ipcRenderer.invoke(DESKTOP_CHANNELS.createProfile, name),
     checkUpdate: (): void => {
       ipcRenderer.send(DESKTOP_CHANNELS.checkUpdate)
     },

@@ -3,7 +3,8 @@
  *
  * Registers a "Desktop" page into the harness settings panel (`settings.section`)
  * so hotkey, launch-at-login, profile switching, and check-for-updates live
- * next to General / Models / Plugins. Actions go through `window.api.desktop`.
+ * next to General / Models / Plugins. Actions go through `window.api.desktop`
+ * and `window.api.updater` (inline update status, no extra window).
  *
  * The plugin may still load from the dsh-desktop profile when the user runs
  * `dsh --profile dsh-desktop` in a normal browser; `apply` is then a no-op
@@ -44,6 +45,8 @@ const settingsCss = `
   flex-direction: column;
   gap: 0;
   padding: 8px 0 24px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
 }
 [data-dsh-desktop-settings] [data-dsh-ds-group] {
   display: flex;
@@ -79,9 +82,24 @@ const settingsCss = `
   line-height: 22px;
   color: var(--dsw-alias-label-primary);
 }
+[data-dsh-desktop-settings] [data-dsh-ds-value-btn] {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-app-region: no-drag;
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  text-align: left;
+}
 [data-dsh-desktop-settings] [data-dsh-ds-button] {
   appearance: none;
   -webkit-appearance: none;
+  -webkit-app-region: no-drag;
   font: inherit;
   font-size: 14px;
   line-height: 22px;
@@ -98,6 +116,58 @@ const settingsCss = `
 [data-dsh-desktop-settings] [data-dsh-ds-button]:disabled {
   opacity: 0.5;
   cursor: default;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-button][data-primary] {
+  border-color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-primary, #fff);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-button][data-primary]:hover:not(:disabled) {
+  opacity: 0.9;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-form] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-label] {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-input] {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-app-region: no-drag;
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  outline: none;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-input]:focus {
+  border-color: var(--dsw-alias-label-primary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-error] {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-state-error-primary, #dc2626);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-warn] {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  color: var(--dsw-alias-label-secondary);
 }
 [data-dsh-desktop-settings] [data-dsh-ds-choices],
 [data-dsh-desktop-settings] [data-dsh-ds-profiles] {
@@ -128,6 +198,43 @@ const settingsCss = `
 [data-dsh-desktop-settings] [data-dsh-ds-choice]:disabled {
   opacity: 0.5;
   cursor: default;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-update] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-status] {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-secondary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-progress] {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dsw-alias-border-l2);
+  overflow: hidden;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-progress-fill] {
+  display: block;
+  height: 100%;
+  background: var(--dsw-alias-label-primary);
 }
 `
 

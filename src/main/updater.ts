@@ -1,9 +1,10 @@
 /**
  * Packaged-app auto-update via GitHub Releases.
  *
- * Prompts live in a dedicated frameless window (Changelog + progress), not
- * native dialogs. Development (`app.isPackaged === false`) never contacts the
- * feed; the tray item still opens the window with an explanation.
+ * Tray "检查更新" opens a dedicated frameless window. The Desktop settings
+ * page inlines the same phases (changelog, progress, install) via a broadcast
+ * to the main window. Development (`app.isPackaged === false`) never contacts
+ * the feed; both surfaces show an explanation instead.
  *
  * @module dsh-desktop/updater
  */
@@ -29,10 +30,19 @@ export interface AppUpdaterOptions {
   onWillInstall: () => void
 }
 
-/** Handle returned to the tray "检查更新" item. */
+/** Options for a manual check. */
+export interface CheckForUpdatesOptions {
+  /**
+   * Open the dedicated update window. Tray leaves this unset (true).
+   * The settings page passes `false` and renders the same state inline.
+   */
+  window?: boolean
+}
+
+/** Handle returned to the tray "检查更新" item and the settings page. */
 export interface AppUpdater {
-  /** Manual check: window even when already up to date or the check fails. */
-  checkForUpdates: () => void
+  /** Manual check. `window: false` keeps the dedicated prompt closed. */
+  checkForUpdates: (opts?: CheckForUpdatesOptions) => void
 }
 
 function updateIsAvailable(result: UpdateCheckResult): boolean {
@@ -59,14 +69,14 @@ function baseState(): Pick<UpdateState, 'currentVersion'> {
   return { currentVersion: app.getVersion() }
 }
 
-function showDevNotice(getWindow: () => BrowserWindow | null): void {
+function showDevNotice(getWindow: () => BrowserWindow | null, showWindow: boolean): void {
   pushUpdateState({
     ...baseState(),
     phase: 'error',
     notes: '',
     error: '开发版不会检查更新。用安装好的应用再试。'
   })
-  showUpdateWindow(getWindow)
+  if (showWindow) showUpdateWindow(getWindow)
 }
 
 /**
@@ -85,8 +95,8 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
       }
     })
     return {
-      checkForUpdates: (): void => {
-        showDevNotice(options.getWindow)
+      checkForUpdates: (opts?: CheckForUpdatesOptions): void => {
+        showDevNotice(options.getWindow, opts?.window !== false)
       }
     }
   }
@@ -99,6 +109,8 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
   let downloadedVersion: string | undefined
   let pendingNotes = ''
   let pendingVersion: string | undefined
+  /** Subsequent download / ready prompts follow the last manual check. */
+  let openWindowOnPresent = true
 
   autoUpdater.on('error', (error) => {
     console.error('[dsh-desktop] auto-update error:', error)
@@ -120,7 +132,7 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
 
   function present(state: UpdateState): void {
     pushUpdateState(state)
-    showUpdateWindow(options.getWindow)
+    if (openWindowOnPresent) showUpdateWindow(options.getWindow)
   }
 
   function showReady(version: string): void {
@@ -138,7 +150,7 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
       return
     }
     if (downloading) {
-      showUpdateWindow(options.getWindow)
+      if (openWindowOnPresent) showUpdateWindow(options.getWindow)
       return
     }
     downloading = true
@@ -167,15 +179,21 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
     }
   }
 
-  async function runCheck(silent: boolean): Promise<void> {
+  async function runCheck(silent: boolean, showWindow = true): Promise<void> {
     if (downloadedVersion !== undefined) {
+      if (!silent) openWindowOnPresent = showWindow
       showReady(downloadedVersion)
       return
     }
     if (checking || downloading) {
-      if (!silent) showUpdateWindow(options.getWindow)
+      if (!silent) {
+        openWindowOnPresent = showWindow
+        if (showWindow) showUpdateWindow(options.getWindow)
+      }
       return
     }
+
+    if (!silent) openWindowOnPresent = showWindow
 
     checking = true
     if (!silent) {
@@ -190,6 +208,7 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
 
       pendingVersion = result.updateInfo.version
       pendingNotes = notesFromInfo(result.updateInfo)
+      if (silent) openWindowOnPresent = true
       present({
         ...baseState(),
         phase: 'available',
@@ -230,8 +249,8 @@ export function startAutoUpdater(options: AppUpdaterOptions): AppUpdater {
   }, STARTUP_CHECK_DELAY_MS)
 
   return {
-    checkForUpdates: (): void => {
-      void runCheck(false)
+    checkForUpdates: (opts?: CheckForUpdatesOptions): void => {
+      void runCheck(false, opts?.window !== false)
     }
   }
 }

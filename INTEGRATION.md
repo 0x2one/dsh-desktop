@@ -155,7 +155,7 @@ scripts/
 - **窗口状态记忆**（`src/main/window-state.ts`）：`BrowserWindow` 创建后、`ready-to-show` 前调用 `applyWindowState`——从设置读取 bounds + 最大化标志，用 `screen.getAllDisplays()` 校验（与任一显示器工作区有交集、不小于 900×600，否则回退默认 1280×800 居中）；`resize`/`move`（防抖 500ms）/`maximize`/`unmaximize` 保存 `getNormalBounds()`（最大化时不会保存虚化矩形）；`close` 时立即 flush，`before-quit` 再兜底 flush。`maximize()` 会把 `show: false` 的窗口显示出来，因此 restore **从不** 调用它：普通启动在 `ready-to-show`、静默启动在第一次 `showMainWindow` 时再 `applyDeferredMaximize()`；flush 仍把 deferred 的最大化标志写回设置。
 - **首次关闭提示**（`src/main/app-notify.ts`）：第一次关闭到托盘时弹系统 `Notification`（「点击托盘图标可恢复；如需退出请用托盘菜单」），点击通知恢复窗口；`closeToTrayHintShown` 置位后不再提示。`Notification.isSupported()` 为 false 时静默跳过并直接置位（不重复尝试）。
 - **开机自启 + 静默启动**（`src/main/launch-at-login.ts`）：托盘「开机自启」二级菜单（开启 / 关闭，与「启动环境」相同的 radio 形式），意图存 `launchAtLogin`。勾选状态以意图为准，系统侧仍在启动则也显示为开。Windows：`setLoginItemSettings({ openAtLogin, enabled, args: ['--hidden'] })`。macOS：只设 `openAtLogin`，静默启动看 `wasOpenedAtLogin`。Linux：不调登录项 API。`shouldStartHidden` 只作用于**第一扇**窗口。手动启动或二次实例走 `showMainWindow`。注册失败时回滚设置。
-- **设置「桌面」分区**（`plugins/dsh-desktop-settings/`）：向 harness `settings.section` 注册独立页（order 5，插在「通用」与「模型」之间），提供与托盘相同的快捷键 / 开机自启 / 启动环境 / 检查更新（不含显示窗口、退出）。经 `window.api.desktop` IPC 调用主进程已有实现，改完后 `syncDesktopChrome` 刷新托盘并广播 snapshot，两边保持一致。托盘菜单本身不删减。
+- **设置「桌面」分区**（`plugins/dsh-desktop-settings/`）：向 harness `settings.section` 注册独立页（order 5，插在「通用」与「模型」之间），提供与托盘相同的快捷键 / 开机自启 / 启动环境 / 检查更新（不含显示窗口、退出）。快捷键录制、新增环境和检查更新都在设置页内嵌完成（不打开托盘那套 Electron 小窗）；经 `window.api.desktop` / `window.api.updater` 调用主进程已有实现，改完后 `syncDesktopChrome` 刷新托盘并广播 snapshot。托盘菜单本身不删减，仍用原来的弹窗。
 
 ## 验证
 
