@@ -23,6 +23,9 @@ import { APP_PROFILE, prepareAppProfile } from './profile-setup'
 import { DSH_DESKTOP_ENV } from './plugin-install'
 import { spawnEnv, spawnShell, spawnWorkingDirectory } from './spawn-env'
 
+/** Child-process constructor seam used by lifecycle verification. */
+type DshProcessSpawner = typeof spawn
+
 /** Fixed harness version per project requirements. */
 export const DSH_VERSION = '0.1.1-rc.2'
 
@@ -56,7 +59,8 @@ export class DshService {
 
   constructor(
     private readonly events: DshServiceEvents,
-    profile: string = APP_PROFILE
+    profile: string = APP_PROFILE,
+    private readonly spawnProcess: DshProcessSpawner = spawn
   ) {
     this.profileName = profile
   }
@@ -119,7 +123,7 @@ export class DshService {
       '--port',
       '0'
     ]
-    const child = spawn(command, args, {
+    const child = this.spawnProcess(command, args, {
       cwd: spawnWorkingDirectory(),
       env: spawnEnv({
         // Telemetry opt-out: ANY non-empty value disables (documented switch).
@@ -177,8 +181,19 @@ export class DshService {
       })
 
       child.once('exit', (code, signal) => {
+        // A killed leftover from an older start attempt must not overwrite the
+        // state of a newer child.
+        if (this.child !== child) return
         if (this.state === 'stopping') return // requested shutdown
+        const exitedWhileRunning = this.state === 'running'
+        this.child = undefined
+        this.clearTimer()
         this.state = 'failed'
+        this.url = undefined
+        if (exitedWhileRunning) {
+          this.events.onUnexpectedExit(code, signal)
+          return
+        }
         settleFail(
           `dsh web exited before becoming ready (code ${String(code)}, signal ${String(signal)})` +
             (this.stderrTail !== '' ? `\n${this.stderrTail}` : '')
