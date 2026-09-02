@@ -1,10 +1,10 @@
 /**
  * IPC surface for the dsh-desktop settings cordis plugin.
  *
- * The plugin's browser half lives in the harness web UI and drives the same
- * tray actions (hotkey, launch-at-login, profiles, check-for-updates) through
- * this module. Hotkey capture and profile creation collect UI in the plugin;
- * callbacks here apply those values in the app shell.
+ * The plugin's browser half lives in the harness web UI and drives hotkey,
+ * launch-at-login, profiles, and check-for-updates through this module.
+ * Hotkey capture and profile creation collect UI in the plugin; callbacks
+ * here apply those values in the app shell.
  *
  * @module dsh-desktop/desktop-settings
  */
@@ -20,7 +20,7 @@ import {
   type SetHotkeyResult
 } from '../preload/desktop-api'
 
-/** Callbacks the settings page uses; the shell already owns these for the tray. */
+/** Callbacks the settings page uses to drive the app shell. */
 export interface DesktopSettingsHandlers {
   /** Current snapshot (re-read on every get / broadcast). */
   getSnapshot: () => DesktopSnapshot

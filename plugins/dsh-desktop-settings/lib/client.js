@@ -35,7 +35,181 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
 
   // plugins/dsh-desktop-settings/src/client/DesktopSection.tsx
   var import_react = __require("react");
+
+  // plugins/dsh-desktop-settings/src/client/notes.tsx
   var import_jsx_runtime = __require("react/jsx-runtime");
+  function looksLikeHtml(text) {
+    return /<\/?(?:p|h[1-6]|ul|ol|li|div|br|strong|em|code)\b/i.test(text);
+  }
+  function inlineMarkdown(text) {
+    const parts = [];
+    const pattern = /\*\*(.+?)\*\*/g;
+    let last = 0;
+    let match;
+    let key = 0;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match.index > last) parts.push(text.slice(last, match.index));
+      parts.push(/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: match[1] }, key++));
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return parts;
+  }
+  function headingLevel(line) {
+    if (line.startsWith("### ")) return 3;
+    if (line.startsWith("## ")) return 2;
+    if (line.startsWith("# ")) return 1;
+    return null;
+  }
+  function walkInline(el) {
+    const out = [];
+    let key = 0;
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        out.push(node.textContent ?? "");
+        continue;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) continue;
+      const child = node;
+      const tag = child.tagName.toLowerCase();
+      if (tag === "script" || tag === "style" || tag === "iframe") continue;
+      if (tag === "strong" || tag === "b") {
+        out.push(/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: walkInline(child) }, key++));
+        continue;
+      }
+      if (tag === "em" || tag === "i") {
+        out.push(/* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: walkInline(child) }, key++));
+        continue;
+      }
+      if (tag === "code") {
+        out.push(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", { className: "notes-code", children: child.textContent ?? "" }, key++)
+        );
+        continue;
+      }
+      if (tag === "br") {
+        out.push(/* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}, key++));
+        continue;
+      }
+      out.push(/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: walkInline(child) }, key++));
+    }
+    return out;
+  }
+  function headingTag(tag) {
+    if (tag === "h1") return { Tag: "h2", cls: 1 };
+    if (tag === "h2") return { Tag: "h3", cls: 2 };
+    return { Tag: "h4", cls: 3 };
+  }
+  function walkBlocks(nodes, keys) {
+    const out = [];
+    for (const node of nodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = (node.textContent ?? "").trim();
+        if (text === "") continue;
+        out.push(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "notes-p", children: text }, keys.n++)
+        );
+        continue;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) continue;
+      const el = node;
+      const tag = el.tagName.toLowerCase();
+      if (tag === "script" || tag === "style" || tag === "iframe") continue;
+      if (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4") {
+        const { Tag, cls } = headingTag(tag);
+        out.push(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Tag, { className: `notes-h notes-h${String(cls)}`, children: walkInline(el) }, keys.n++)
+        );
+        continue;
+      }
+      if (tag === "p") {
+        out.push(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "notes-p", children: walkInline(el) }, keys.n++)
+        );
+        continue;
+      }
+      if (tag === "ul" || tag === "ol") {
+        const items = [...el.children].filter((child) => child.tagName.toLowerCase() === "li").map((li, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: walkInline(li) }, i));
+        const List = tag === "ol" ? "ol" : "ul";
+        out.push(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(List, { className: "notes-list", children: items }, keys.n++)
+        );
+        continue;
+      }
+      if (tag === "br") continue;
+      out.push(...walkBlocks(el.childNodes, keys));
+    }
+    return out;
+  }
+  function renderHtml(html) {
+    const doc = new DOMParser().parseFromString(`<div id="root">${html}</div>`, "text/html");
+    const root = doc.getElementById("root");
+    if (root === null) return null;
+    const blocks = walkBlocks(root.childNodes, { n: 0 });
+    return blocks.length === 0 ? null : blocks;
+  }
+  function renderMarkdown(text) {
+    const lines = text.replace(/\r\n/g, "\n").split("\n");
+    const blocks = [];
+    let list = [];
+    let para = [];
+    let key = 0;
+    const flushList = () => {
+      if (list.length === 0) return;
+      blocks.push(
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "notes-list", children: list.map((item, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: inlineMarkdown(item) }, i)) }, key++)
+      );
+      list = [];
+    };
+    const flushPara = () => {
+      if (para.length === 0) return;
+      blocks.push(
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "notes-p", children: inlineMarkdown(para.join(" ")) }, key++)
+      );
+      para = [];
+    };
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const heading = headingLevel(trimmed);
+      if (heading !== null) {
+        flushList();
+        flushPara();
+        const body = trimmed.replace(/^#{1,3}\s+/u, "");
+        const Tag = heading === 1 ? "h2" : heading === 2 ? "h3" : "h4";
+        blocks.push(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Tag, { className: `notes-h notes-h${String(heading)}`, children: inlineMarkdown(body) }, key++)
+        );
+        continue;
+      }
+      if (/^[-*]\s+/u.test(trimmed)) {
+        flushPara();
+        list.push(trimmed.replace(/^[-*]\s+/u, ""));
+        continue;
+      }
+      if (trimmed === "") {
+        flushList();
+        flushPara();
+        continue;
+      }
+      flushList();
+      para.push(trimmed);
+    }
+    flushList();
+    flushPara();
+    return blocks;
+  }
+  function renderNotes(raw) {
+    const text = raw.trim();
+    if (text === "") return null;
+    const rendered = looksLikeHtml(text) ? renderHtml(text) : renderMarkdown(text);
+    if (rendered === null || Array.isArray(rendered) && rendered.length === 0) {
+      return null;
+    }
+    return rendered;
+  }
+
+  // plugins/dsh-desktop-settings/src/client/DesktopSection.tsx
+  var import_jsx_runtime2 = __require("react/jsx-runtime");
   function readWindowApi() {
     if (typeof window === "undefined") return void 0;
     return window.api;
@@ -93,12 +267,12 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
       updater?.dismiss();
       onCollapse();
     };
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-update": "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-status": "", children: statusCopy(t, state) }),
-      showNotes ? notes === "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-hint": "", children: t("updateNotesEmpty") }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("pre", { "data-dsh-ds-notes": "", children: state.notes }) : null,
-      phase === "downloading" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "data-dsh-ds-progress": "", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { "data-dsh-ds-progress-fill": "", style: { width: `${String(percent)}%` } }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "data-dsh-ds-hint": "", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-update": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-status": "", children: statusCopy(t, state) }),
+      showNotes ? notes === "" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-hint": "", children: t("updateNotesEmpty") }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { "data-dsh-ds-notes": "", children: renderNotes(state.notes) ?? t("updateNotesEmpty") }) : null,
+      phase === "downloading" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { "data-dsh-ds-progress": "", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { "data-dsh-ds-progress-fill": "", style: { width: `${String(percent)}%` } }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { "data-dsh-ds-hint": "", children: [
           t("updateDownloaded"),
           " ",
           Math.round(percent),
@@ -106,9 +280,9 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
           state.progress !== void 0 && state.progress.total > 0 ? ` \xB7 ${formatBytes(state.progress.transferred)} / ${formatBytes(state.progress.total)}` : ""
         ] })
       ] }) : null,
-      phase === "available" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-row": "", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "data-dsh-ds-button": "", onClick: dismiss, children: t("updateNotNow") }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      phase === "available" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-row": "", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "data-dsh-ds-button": "", onClick: dismiss, children: t("updateNotNow") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           "button",
           {
             type: "button",
@@ -119,8 +293,8 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
           }
         )
       ] }) : null,
-      phase === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-row": "", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      phase === "ready" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-row": "", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           "button",
           {
             type: "button",
@@ -132,7 +306,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
             children: t("updateInstallLater")
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           "button",
           {
             type: "button",
@@ -143,7 +317,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
           }
         )
       ] }) : null,
-      phase === "latest" || phase === "error" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "data-dsh-ds-row": "", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "data-dsh-ds-button": "", "data-primary": "", onClick: dismiss, children: t("updateDismiss") }) }) : null
+      phase === "latest" || phase === "error" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { "data-dsh-ds-row": "", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "data-dsh-ds-button": "", "data-primary": "", onClick: dismiss, children: t("updateDismiss") }) }) : null
     ] });
   }
   function DesktopSection({ t }) {
@@ -254,12 +428,12 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
         setHotkeyError("");
       })();
     };
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-desktop-settings": "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "data-dsh-ds-group": "", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { "data-dsh-ds-title": "", children: t("hotkeyTitle") }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-hint": "", children: capturing ? t("hotkeyCaptureHint") : t("hotkeyDescription") }),
-        capturing ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-form": "", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-desktop-settings": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { "data-dsh-ds-group": "", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { "data-dsh-ds-title": "", children: t("hotkeyTitle") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-hint": "", children: capturing ? t("hotkeyCaptureHint") : t("hotkeyDescription") }),
+        capturing ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-form": "", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             "input",
             {
               ref: hotkeyInputRef,
@@ -287,9 +461,9 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
               }
             }
           ),
-          hotkeyError !== "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-error": "", children: hotkeyError }) : null,
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-row": "", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          hotkeyError !== "" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-error": "", children: hotkeyError }) : null,
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-row": "", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
               "button",
               {
                 type: "button",
@@ -303,11 +477,11 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
                 children: t("hotkeyReset")
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "data-dsh-ds-button": "", onClick: stopCapture, children: t("cancel") }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "data-dsh-ds-button": "", "data-primary": "", onClick: saveCapture, children: t("hotkeySave") })
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "data-dsh-ds-button": "", onClick: stopCapture, children: t("cancel") }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "data-dsh-ds-button": "", "data-primary": "", onClick: saveCapture, children: t("hotkeySave") })
           ] })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-row": "", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-row": "", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             "button",
             {
               type: "button",
@@ -321,7 +495,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
               children: snapshot?.hotkeyLabel ?? "\u2026"
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             "button",
             {
               type: "button",
@@ -337,10 +511,10 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
           )
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "data-dsh-ds-group": "", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { "data-dsh-ds-title": "", children: t("launchTitle") }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-choices": "", role: "radiogroup", "aria-label": t("launchTitle"), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { "data-dsh-ds-group": "", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { "data-dsh-ds-title": "", children: t("launchTitle") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-choices": "", role: "radiogroup", "aria-label": t("launchTitle"), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             "button",
             {
               type: "button",
@@ -358,7 +532,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
               children: t("launchOn")
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             "button",
             {
               type: "button",
@@ -378,11 +552,11 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
           )
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "data-dsh-ds-group": "", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { "data-dsh-ds-title": "", children: t("profileTitle") }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "data-dsh-ds-profiles": "", role: "radiogroup", "aria-label": t("profileTitle"), children: (snapshot?.profiles ?? []).map((name) => {
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { "data-dsh-ds-group": "", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { "data-dsh-ds-title": "", children: t("profileTitle") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { "data-dsh-ds-profiles": "", role: "radiogroup", "aria-label": t("profileTitle"), children: (snapshot?.profiles ?? []).map((name) => {
           const selected = name === snapshot?.currentProfile;
-          return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             "button",
             {
               type: "button",
@@ -402,7 +576,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
             name
           );
         }) }),
-        creating ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+        creating ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
           "form",
           {
             "data-dsh-ds-form": "",
@@ -421,8 +595,8 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
               });
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { "data-dsh-ds-label": "", htmlFor: "dsh-desktop-profile-name", children: t("profileName") }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { "data-dsh-ds-label": "", htmlFor: "dsh-desktop-profile-name", children: t("profileName") }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                 "input",
                 {
                   id: "dsh-desktop-profile-name",
@@ -440,10 +614,10 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
                   }
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-hint": "", children: t("profileHint") }),
-              profileError !== "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-error": "", children: profileError }) : null,
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-dsh-ds-row": "", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-hint": "", children: t("profileHint") }),
+              profileError !== "" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-error": "", children: profileError }) : null,
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { "data-dsh-ds-row": "", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                   "button",
                   {
                     type: "button",
@@ -457,11 +631,11 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
                     children: t("cancel")
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", "data-dsh-ds-button": "", "data-primary": "", disabled: busy, children: t("profileSubmit") })
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "submit", "data-dsh-ds-button": "", "data-primary": "", disabled: busy, children: t("profileSubmit") })
               ] })
             ]
           }
-        ) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "data-dsh-ds-row": "", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        ) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { "data-dsh-ds-row": "", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           "button",
           {
             type: "button",
@@ -477,16 +651,16 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
             children: t("profileCreate")
           }
         ) }),
-        profileWarning !== "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { "data-dsh-ds-warn": "", children: profileWarning }) : null
+        profileWarning !== "" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { "data-dsh-ds-warn": "", children: profileWarning }) : null
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { "data-dsh-ds-group": "", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { "data-dsh-ds-title": "", children: t("updateTitle") }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { "data-dsh-ds-hint": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { "data-dsh-ds-group": "", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { "data-dsh-ds-title": "", children: t("updateTitle") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { "data-dsh-ds-hint": "", children: [
           t("updateCurrent"),
           " ",
           snapshot?.appVersion ?? updateState?.currentVersion ?? "\u2026"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { "data-dsh-ds-row": "", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { "data-dsh-ds-row": "", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           "button",
           {
             type: "button",
@@ -506,7 +680,7 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
             children: t("updateAction")
           }
         ) }),
-        updateOpen && updateState !== null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(UpdatePanel, { t, state: updateState, onCollapse: () => setUpdateOpen(false) }) : null
+        updateOpen && updateState !== null ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(UpdatePanel, { t, state: updateState, onCollapse: () => setUpdateOpen(false) }) : null
       ] })
     ] });
   }
@@ -776,11 +950,43 @@ var __DSH_DESKTOP_SETTINGS_EXPORTS = (() => {
   font: inherit;
   font-size: 12px;
   line-height: 18px;
-  white-space: pre-wrap;
   word-break: break-word;
   border-radius: 8px;
   border: 1px solid var(--dsw-alias-border-l2);
   color: var(--dsw-alias-label-secondary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h {
+  margin: 16px 0 8px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h1 {
+  font-size: 15px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h2,
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h3 {
+  font-size: 13px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h:first-child {
+  margin-top: 0;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-list {
+  margin: 0 0 12px;
+  padding: 0 0 0 18px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-list li {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.92em;
 }
 [data-dsh-desktop-settings] [data-dsh-ds-progress] {
   height: 4px;
