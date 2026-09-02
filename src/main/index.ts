@@ -19,8 +19,6 @@ import {
 import { ensureMarketInstalled } from './plugin-market'
 import { createAppTray, type AppTray } from './tray'
 import { listProfiles, loadPreferredProfile, savePreferredProfile } from './profile-pref'
-import { promptProfileName } from './profile-prompt'
-import { promptToggleHotkey } from './hotkey-prompt'
 import {
   DEFAULT_TOGGLE_ACCELERATOR,
   acceleratorFromKeyEvent,
@@ -34,7 +32,6 @@ import {
   toDisplayLabel
 } from './global-hotkey'
 import { startAutoUpdater, type AppUpdater } from './updater'
-import { closeUpdateWindow } from './update-window'
 import { installAppMenu } from './menu'
 import { applyDeferredMaximize, applyWindowState, flushAndStopWindowState } from './window-state'
 import { showCloseToTrayHint } from './app-notify'
@@ -178,33 +175,6 @@ if (!gotTheLock) {
     }
   }
 
-  async function createNewProfile(): Promise<void> {
-    if (switchingProfile || quitRequested) return
-    showMainWindow()
-    const raw = await promptProfileName(mainWindow)
-    if (raw === null || raw.trim() === '') return
-    const result = await createProfileWithName(raw)
-    if (!result.ok) {
-      void dialog.showMessageBox({
-        type: 'error',
-        title: '无法创建环境',
-        message: '新环境没有创建成功',
-        detail: result.error,
-        buttons: ['OK']
-      })
-      return
-    }
-    if (result.warning !== undefined) {
-      void dialog.showMessageBox({
-        type: 'warning',
-        title: '插件市场安装失败',
-        message: '未能安装 dshmarket',
-        detail: result.warning,
-        buttons: ['OK']
-      })
-    }
-  }
-
   app.on('second-instance', () => {
     showMainWindow()
   })
@@ -316,7 +286,7 @@ if (!gotTheLock) {
       selectProfile: (name) => switchProfile(name),
       createProfile: (name) => createProfileWithName(name),
       checkUpdate: (): void => {
-        appUpdater?.checkForUpdates({ window: false })
+        appUpdater?.checkForUpdates()
       }
     })
     window.on('closed', () => {
@@ -483,17 +453,8 @@ if (!gotTheLock) {
       icon,
       currentProfile: activeProfile,
       onShow: showMainWindow,
-      getHotkeyLabel: getToggleAcceleratorLabel,
-      onEditHotkey: () => {
-        void promptToggleHotkey(mainWindow).then((changed) => {
-          if (changed) syncDesktopChrome()
-        })
-      },
       onSelectProfile: (name) => {
         void switchProfile(name)
-      },
-      onCreateProfile: () => {
-        void createNewProfile()
       },
       launchAtLogin: isLaunchAtLoginEnabled,
       onToggleLaunchAtLogin: (enabled) => {
@@ -501,9 +462,6 @@ if (!gotTheLock) {
         // Rebuild so the 开启 / 关闭 radio reflects the new state, and push
         // the same snapshot to the settings plugin if the window is open.
         syncDesktopChrome()
-      },
-      onCheckUpdate: () => {
-        appUpdater?.checkForUpdates()
       },
       onQuit: () => {
         app.quit()
@@ -513,7 +471,6 @@ if (!gotTheLock) {
     createWindow()
 
     appUpdater = startAutoUpdater({
-      getWindow: () => mainWindow,
       onWillInstall: () => {
         quitRequested = true
       }
@@ -551,7 +508,6 @@ if (!gotTheLock) {
     flushAndStopWindowState()
     appTray?.destroy()
     appTray = null
-    closeUpdateWindow()
     if (serviceStopping || dshService === null) return
     event.preventDefault()
     serviceStopping = true

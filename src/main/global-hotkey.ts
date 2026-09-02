@@ -102,7 +102,7 @@ export interface KeyEventParts {
 export type SetAcceleratorResult = { ok: true } | { ok: false; error: string }
 
 /** Who currently owns the show/hide shortcut recorder. */
-export type HotkeyCaptureOwner = 'tray' | 'settings'
+export type HotkeyCaptureOwner = 'settings'
 
 let onToggle: (() => void) | null = null
 let desiredAccelerator = DEFAULT_TOGGLE_ACCELERATOR
@@ -290,8 +290,8 @@ export function resumeToggleHotkey(): void {
 }
 
 /**
- * Pause the global shortcut for one recorder (tray dialog or settings page).
- * @returns false when the other surface is already recording.
+ * Pause the global shortcut while the settings page records a new combo.
+ * @returns false when another recorder already owns the session.
  */
 export function beginHotkeyCaptureSession(owner: HotkeyCaptureOwner): boolean {
   if (captureOwner !== null && captureOwner !== owner) return false

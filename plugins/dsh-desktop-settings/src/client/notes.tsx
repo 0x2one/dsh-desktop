@@ -197,14 +197,13 @@ function renderMarkdown(text: string): ReactNode {
   return blocks
 }
 
+/** Parse GitHub Release HTML or Markdown into React nodes. Empty input is null. */
 export function renderNotes(raw: string): ReactNode {
   const text = raw.trim()
-  if (text === '') {
-    return <p className="notes-empty">这一版没有更新说明。</p>
-  }
+  if (text === '') return null
   const rendered = looksLikeHtml(text) ? renderHtml(text) : renderMarkdown(text)
   if (rendered === null || (Array.isArray(rendered) && rendered.length === 0)) {
-    return <p className="notes-empty">这一版没有更新说明。</p>
+    return null
   }
   return rendered
 }

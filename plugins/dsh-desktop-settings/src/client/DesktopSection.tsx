@@ -3,11 +3,12 @@
  *
  * All actions go through `window.api.desktop` / `window.api.updater`
  * (dsh-desktop preload). Hotkey capture, new-profile creation, and update
- * checks are inlined here (no Electron dialog windows). The tray menu keeps
- * its own popups. Styling uses harness alias tokens so light/dark themes match.
+ * checks are inlined here. Styling uses harness alias tokens so light/dark
+ * themes match.
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { DesktopKey } from './locales.ts'
+import { renderNotes } from './notes.tsx'
 
 /** Snapshot shape mirrored from the preload `DesktopSnapshot`. */
 export interface DesktopSnapshot {
@@ -186,7 +187,7 @@ function UpdatePanel({ t, state, onCollapse }: UpdatePanelProps): React.JSX.Elem
         notes === '' ? (
           <p data-dsh-ds-hint="">{t('updateNotesEmpty')}</p>
         ) : (
-          <pre data-dsh-ds-notes="">{state.notes}</pre>
+          <div data-dsh-ds-notes="">{renderNotes(state.notes) ?? t('updateNotesEmpty')}</div>
         )
       ) : null}
       {phase === 'downloading' ? (

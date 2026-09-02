@@ -1,5 +1,5 @@
 /**
- * Shared update-window IPC contract (preload + main + renderer).
+ * Shared updater IPC contract (preload + main + settings page).
  *
  * @module dsh-desktop/update-api
  */

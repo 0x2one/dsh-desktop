@@ -219,11 +219,43 @@ const settingsCss = `
   font: inherit;
   font-size: 12px;
   line-height: 18px;
-  white-space: pre-wrap;
   word-break: break-word;
   border-radius: 8px;
   border: 1px solid var(--dsw-alias-border-l2);
   color: var(--dsw-alias-label-secondary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h {
+  margin: 16px 0 8px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h1 {
+  font-size: 15px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h2,
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h3 {
+  font-size: 13px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-h:first-child {
+  margin-top: 0;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-list {
+  margin: 0 0 12px;
+  padding: 0 0 0 18px;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-list li {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+[data-dsh-desktop-settings] [data-dsh-ds-notes] .notes-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.92em;
 }
 [data-dsh-desktop-settings] [data-dsh-ds-progress] {
   height: 4px;
