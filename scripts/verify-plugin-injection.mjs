@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
+import { DSH_WEB_READY } from './dsh-web-ready.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const HOME = mkdtempSync(join(tmpdir(), 'dsh-desktop-verify-'))
@@ -173,7 +174,7 @@ step('injection is idempotent (third run appends nothing)', () => {
 const { spawn } = await import('node:child_process')
 const { createInterface } = await import('node:readline')
 const ready = new Promise((resolve, reject) => {
-  const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.1-rc.2', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
+  const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.2-rc.1', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
     cwd: ROOT,
     env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1', DSH_DESKTOP: '1' },
     shell: process.platform === 'win32',
@@ -190,7 +191,7 @@ const ready = new Promise((resolve, reject) => {
   const outLines = createInterface({ input: child.stdout })
   outLines.on('line', (line) => {
     process.stdout.write(`  [dsh web] ${line}\n`)
-    if (/dsh web: http:\/\/127\.0\.0\.1:\d+/.test(line)) {
+    if (DSH_WEB_READY.test(line)) {
       clearTimeout(timer)
       resolve({ child, stderr })
     }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixes
+
+- 解析 `dsh web` 就绪行时保留进程 token（`?token=`），否则 Electron 打开无令牌地址会 401
+
 ---
 
 ## v1.2.1
@@ -122,7 +126,7 @@ macOS 支持与双平台发版。
 
 ### Features
 
-- 嵌入固定版本 `@deepseek-ai/dsh@0.1.1-rc.2`（独立 Node 子进程，不打进 Electron）
+- 嵌入固定版本 `@deepseek-ai/dsh@0.1.2-rc.1`（独立 Node 子进程，不打进 Electron）
 - 无边框窗口 + 内容栏右上角自定义最小化 / 最大化 / 关闭
 - 系统托盘：关闭隐藏到托盘，可切换 / 新建 harness 环境
 - 专属 profile `dsh-desktop`，与用户 `web` profile 隔离；依赖通过共享 `node_modules` 复用

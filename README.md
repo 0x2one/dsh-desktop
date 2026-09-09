@@ -6,7 +6,7 @@ DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepsee
 
 ## 功能
 
-- 嵌入固定版本 `@deepseek-ai/dsh@0.1.1-rc.2`（`npx` 子进程，独立 Node ABI，不打进 Electron）
+- 嵌入固定版本 `@deepseek-ai/dsh@0.1.2-rc.1`（`npx` 子进程，独立 Node ABI，不打进 Electron）
 - 无边框窗口：Windows/Linux 内容栏右上角自定义最小化 / 最大化 / 关闭；macOS 保留系统红绿灯，不重复渲染自定义按钮；会话区顶部可拖动
 - 系统托盘：关闭窗口隐藏到托盘，托盘可切换 harness 环境（macOS 菜单栏模板图标，自动适配明暗模式）
 - 全局快捷键显示 / 隐藏窗口（默认 Ctrl+Alt+空格，可在设置「桌面」分区自定义）
@@ -28,7 +28,7 @@ DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepsee
 | Node.js | `22.19+` 或 `24+` |
 | pnpm | 任意已安装并在 PATH 中 |
 
-首次启动会联网拉取 `@deepseek-ai/dsh@0.1.1-rc.2`；若当前 profile 尚未安装 `dshmarket`，还会阻塞安装插件市场（可能数分钟）。之后与本地 `dsh web` 共用同一套依赖，一般不再重复下载。
+首次启动会联网拉取 `@deepseek-ai/dsh@0.1.2-rc.1`；若当前 profile 尚未安装 `dshmarket`，还会阻塞安装插件市场（可能数分钟）。之后与本地 `dsh web` 共用同一套依赖，一般不再重复下载。
 
 Windows 是主要目标平台，macOS 也受支持：红绿灯窗口控制（不再渲染自定义按钮）、应用菜单与快捷键（Cmd+Q / Cmd+C/V/X/A）、菜单栏模板图标；CI 打版本标签时同时产出 Windows 安装包与 macOS dmg/zip（Intel + Apple Silicon）。macOS 产物未签名未公证，首次打开需在「系统设置 → 隐私与安全性」中允许，或用右键 → 打开。
 
@@ -93,7 +93,7 @@ node node_modules/playwright-core/cli.js install chromium
 
 ```
 Electron 主进程          dsh web（独立 Node 子进程）
-  环境检查 / 托盘          npx @deepseek-ai/dsh@0.1.1-rc.2
+  环境检查 / 托盘          npx @deepseek-ai/dsh@0.1.2-rc.1
   专属 profile             --profile <当前环境> --no-open --port 0
   注入窗口操作栏插件  →    cordis 插件 → 内容栏右上角操作栏
   IPC 最小化/最大化/关闭   window.api.windowControls（Windows/Linux）

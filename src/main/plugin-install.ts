@@ -324,7 +324,7 @@ function profilesToInject(home: string, primary: string): string[] {
  * after our patch write and re-composes `__DSH_BOOT__`, but it is
  * asynchronous — polling the served page lets the window load a first paint
  * that already carries the window controls (and the settings section).
- * @param url - the dsh web base URL.
+ * @param url - the authenticated dsh web URL printed at startup.
  * @param timeoutMs - poll budget (default 25s).
  * @returns true when every plugin appeared in the graph within the budget.
  */
@@ -332,8 +332,7 @@ export async function waitForPluginInGraph(url: string, timeoutMs = 25_000): Pro
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(5_000) })
-      const html = await response.text()
+      const html = await fetchDshIndex(url)
       if (DESKTOP_PLUGINS.every((plugin) => html.includes(plugin.packageName))) return true
     } catch {
       // Transient fetch errors (server still settling) — keep polling.
@@ -341,4 +340,21 @@ export async function waitForPluginInGraph(url: string, timeoutMs = 25_000): Pro
     await new Promise((resolve) => setTimeout(resolve, 750))
   }
   return false
+}
+
+/**
+ * Load index HTML after exchanging the process launch token for a session
+ * cookie. Node `fetch` does not persist `Set-Cookie` across the 303 to `/`.
+ */
+async function fetchDshIndex(url: string): Promise<string> {
+  const login = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(5_000) })
+  if (login.status === 200) return login.text()
+  const setCookie = login.headers.get('set-cookie')
+  if (login.status !== 303 || setCookie === null) return login.text()
+  const cookie = setCookie.split(';', 1)[0] ?? ''
+  const index = await fetch(new URL('/', url), {
+    headers: cookie === '' ? undefined : { cookie },
+    signal: AbortSignal.timeout(5_000)
+  })
+  return index.text()
 }

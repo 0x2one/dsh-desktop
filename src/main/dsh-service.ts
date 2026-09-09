@@ -1,10 +1,11 @@
 /**
  * Embedded DeepSeek Harness web service process.
  *
- * Spawns `npx --yes @deepseek-ai/dsh@0.1.1-rc.2 --profile dsh-desktop
+ * Spawns `npx --yes @deepseek-ai/dsh@0.1.2-rc.1 --profile dsh-desktop
  * --no-open --port 0`, waits for the readiness line (`dsh web:
- * http://127.0.0.1:<port>`), and owns the child's lifecycle (stop on quit,
- * process-tree kill on Windows).
+ * http://127.0.0.1:<port>/?token=...`), and owns the child's lifecycle (stop
+ * on quit, process-tree kill on Windows). The printed URL carries a process
+ * launch token; loading the origin without it returns 401.
  *
  * The app boots the harness on its own profile (`~/.dsh/profiles/dsh-desktop`,
  * prepared by `profile-setup.ts`) instead of the user's `web` profile, so the
@@ -27,13 +28,17 @@ import { spawnEnv, spawnShell, spawnWorkingDirectory } from './spawn-env'
 type DshProcessSpawner = typeof spawn
 
 /** Fixed harness version per project requirements. */
-export const DSH_VERSION = '0.1.1-rc.2'
+export const DSH_VERSION = '0.1.2-rc.1'
 
 /** Default ready timeout: first `npx` run downloads the package. */
 const READY_TIMEOUT_MS = 180_000
 
-/** The readiness line the web-app bundle prints once the server binds. */
-const READY_LINE = /dsh web: (http:\/\/127\.0\.0\.1:\d+)/
+/**
+ * The readiness line the web-app bundle prints once the server binds.
+ * Capture the first loopback URL including `?token=`, stopping before an
+ * optional ` (LAN: ...)` suffix.
+ */
+const READY_LINE = /dsh web: (http:\/\/127\.0\.0\.1:\d+\S*)/
 
 /** Lifecycle of the embedded service process. */
 export type DshServiceState = 'stopped' | 'starting' | 'running' | 'stopping' | 'failed'

@@ -87,9 +87,9 @@ async function verifyRuntimeExit() {
   )
 
   const starting = service.start()
-  child.stdout.write('dsh web: http://127.0.0.1:43123\n')
+  child.stdout.write('dsh web: http://127.0.0.1:43123/?token=test-token (LAN: http://192.168.1.5:43123/?token=test-token)\n')
   const url = await starting
-  assert(url === 'http://127.0.0.1:43123', `unexpected ready URL: ${url}`)
+  assert(url === 'http://127.0.0.1:43123/?token=test-token', `unexpected ready URL: ${url}`)
   assert(service.getState() === 'running', `expected running, got ${service.getState()}`)
 
   child.exit(17)

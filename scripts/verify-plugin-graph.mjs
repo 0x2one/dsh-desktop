@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
+import { DSH_WEB_READY, fetchDshIndex } from './dsh-web-ready.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const HOME = mkdtempSync(join(tmpdir(), 'dsh-desktop-graph-'))
@@ -53,7 +54,7 @@ if (!ok) {
 const { spawn } = await import('node:child_process')
 const { createInterface } = await import('node:readline')
 const ready = new Promise((resolve, reject) => {
-  const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.1-rc.2', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
+  const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.2-rc.1', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
     cwd: ROOT,
     env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1', DSH_DESKTOP: '1' },
     shell: process.platform === 'win32',
@@ -68,7 +69,7 @@ const ready = new Promise((resolve, reject) => {
   errLines.on('line', (line) => { process.stderr.write(`  [stderr] ${line}\n`) })
   const outLines = createInterface({ input: child.stdout })
   outLines.on('line', (line) => {
-    const m = /dsh web: (http:\/\/127\.0\.0\.1:\d+)/.exec(line)
+    const m = DSH_WEB_READY.exec(line)
     if (m) {
       clearTimeout(timer)
       resolve({ child, url: m[1] })
@@ -83,7 +84,7 @@ const ready = new Promise((resolve, reject) => {
 let boot = null
 try {
   boot = await ready
-  const html = await (await fetch(boot.url)).text()
+  const html = await fetchDshIndex(boot.url)
   const foundWc = html.includes('@dsh-desktop/window-controls')
   const foundSettings = html.includes('@dsh-desktop/settings')
   const graph = /globalThis\["__DSH_BOOT__"\] = (.+?)(?:<\/script>|$)/s.exec(html)?.[1]

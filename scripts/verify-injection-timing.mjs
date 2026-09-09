@@ -22,6 +22,7 @@ import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
+import { DSH_WEB_READY, fetchDshIndex } from './dsh-web-ready.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const HOME = mkdtempSync(join(tmpdir(), 'dsh-desktop-timing-'))
@@ -56,7 +57,7 @@ process.env.DSH_HOME = DSH_HOME
 const PLUGIN_ID = '@dsh-desktop/window-controls'
 
 const ready = new Promise((resolve, reject) => {
-  const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.1-rc.2', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
+  const child = spawn('npx', ['--yes', '@deepseek-ai/dsh@0.1.2-rc.1', '--profile', 'dsh-desktop', '--no-open', '--port', '0'], {
     cwd: ROOT,
     env: { ...process.env, DSH_HOME, DSH_TELEMETRY_DISABLED: '1', DSH_DESKTOP: '1' },
     shell: process.platform === 'win32',
@@ -71,7 +72,7 @@ const ready = new Promise((resolve, reject) => {
   errLines.on('line', (line) => { process.stderr.write(`  [stderr] ${line}\n`) })
   const outLines = createInterface({ input: child.stdout })
   outLines.on('line', (line) => {
-    const m = /dsh web: (http:\/\/127\.0\.0\.1:\d+)/.exec(line)
+    const m = DSH_WEB_READY.exec(line)
     if (m) {
       clearTimeout(timer)
       resolve({ child, url: m[1] })
@@ -85,7 +86,7 @@ const ready = new Promise((resolve, reject) => {
 
 const fetchHasPlugin = async (url) => {
   try {
-    const html = await (await fetch(url)).text()
+      const html = await fetchDshIndex(url)
     return html.includes(PLUGIN_ID)
   } catch {
     return false
