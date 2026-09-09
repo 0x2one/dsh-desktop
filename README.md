@@ -4,6 +4,8 @@ DeepSeek Harness 的桌面客户端：把 [`dsh web`](https://github.com/deepsee
 
 默认使用专属 profile `dsh-desktop`，与本机已有的 `web` 等环境隔离；依赖通过 `~/.dsh/profiles/node_modules` 共享，避免重复安装。
 
+**注意：** 本版本将嵌入的 `@deepseek-ai/dsh` 升级到 `0.1.2-rc.1`。这次更新可能造成启动失败；若遇到无法启动，请手动删除 `~/.dsh/profiles/` 中对应环境目录（默认 `dsh-desktop`）后重试。
+
 ## 功能
 
 - 嵌入固定版本 `@deepseek-ai/dsh@0.1.2-rc.1`（`npx` 子进程，独立 Node ABI，不打进 Electron）

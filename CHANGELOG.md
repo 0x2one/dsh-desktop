@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+---
+
+## v1.2.2
+
+嵌入 harness 升级到 `@deepseek-ai/dsh@0.1.2-rc.1`；打开带进程令牌的就绪地址。升级后若启动失败，可能需要手动删除 `~/.dsh/profiles/` 中的对应环境。
+
+### Features
+
+- 嵌入 `@deepseek-ai/dsh` 从 `0.1.1-rc.2` 升级到 `0.1.2-rc.1`
+
 ### Fixes
 
 - 解析 `dsh web` 就绪行时保留进程 token（`?token=`），否则 Electron 打开无令牌地址会 401
