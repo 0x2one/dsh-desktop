@@ -1,7 +1,7 @@
 /**
  * Embedded DeepSeek Harness web service process.
  *
- * Spawns `npx --yes @deepseek-ai/dsh@0.1.2-rc.1 --profile dsh-desktop
+ * Spawns `npx --yes @deepseek-ai/dsh@0.1.5-rc.2 --profile dsh-desktop
  * --no-open --port 0`, waits for the readiness line (`dsh web:
  * http://127.0.0.1:<port>/?token=...`), and owns the child's lifecycle (stop
  * on quit, process-tree kill on Windows). The printed URL carries a process
@@ -28,7 +28,7 @@ import { spawnEnv, spawnShell, spawnWorkingDirectory } from './spawn-env'
 type DshProcessSpawner = typeof spawn
 
 /** Fixed harness version per project requirements. */
-export const DSH_VERSION = '0.1.2-rc.1'
+export const DSH_VERSION = '0.1.5-rc.2'
 
 /** Default ready timeout: first `npx` run downloads the package. */
 const READY_TIMEOUT_MS = 180_000

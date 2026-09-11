@@ -2,7 +2,7 @@
  * Runtime requirement checks for dsh-desktop.
  *
  * The embedded DeepSeek Harness web service (`dsh web`) runs through
- * `npx @deepseek-ai/dsh@0.1.2-rc.1`, which requires Node.js (satisfying the
+ * `npx @deepseek-ai/dsh@0.1.5-rc.2`, which requires Node.js (satisfying the
  * harness engines range) and pnpm on PATH. Before spawning the service we
  * verify both; a missing runtime is a user-facing installation prompt, not a
  * crash.
@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process'
 import { PRODUCT_NAME } from './app-name'
 import { spawnEnv, spawnShell, spawnWorkingDirectory } from './spawn-env'
 
-/** Minimum Node.js major that @deepseek-ai/dsh 0.1.2-rc.1 accepts. */
+/** Minimum Node.js major that @deepseek-ai/dsh 0.1.5-rc.2 accepts. */
 export const MIN_NODE_MAJOR = 22
 /** Minimum Node.js minor for the 22.x line (engines: ^22.19.0 || >=24.0.0). */
 export const MIN_NODE_MINOR_22 = 19

@@ -1,7 +1,7 @@
 /**
  * Shared parsing and index fetch for `dsh web` readiness.
  *
- * 0.1.2-rc.1 prints an authenticated loopback URL (`/?token=...`) and may
+ * 0.1.5-rc.2 prints an authenticated loopback URL (`/?token=...`) and may
  * append a LAN URL after whitespace. Index HTML is only served after that
  * process token is exchanged for the session cookie.
  */
