@@ -14,7 +14,8 @@
  * center column has no top padding, so the content area reaches the very top
  * of the window (the overlay controls share that top row); with a
  * conversation open the header starts at the very top too, so its title row
- * (title, mode, Session log) shares the top row with the window controls.
+ * (title, mode, Session log, right-sidebar expand) shares the top row with
+ * the window controls.
  *
  * The controls call `window.api.windowControls.*`, exposed by the
  * dsh-desktop preload bridge, which talks to the Electron main process over
@@ -26,7 +27,7 @@
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import { TITLE_BAR_HEIGHT, WindowControls } from './WindowControls.tsx'
+import { WindowControls } from './WindowControls.tsx'
 
 /** Required services: the slot registry (declared by the layout plugin). */
 export const inject = ['slots']
@@ -57,11 +58,11 @@ const TITLE_BAR_CSS_ID = 'dsh-desktop-title-bar'
  * - **Active (conversation open)**: the center column gets no top padding, so
  *   the conversation header (`wSkVaW_header` in the conversation package)
  *   naturally starts at the very top and its title row — session title, mode,
- *   and the Session log button — shares the top row with the window controls.
- *   A right margin on the header's **title row only** keeps its trailing
- *   utility buttons (Session log) clear of the window-control row (which
- *   floats at the content column's right edge); the tabs row below is left
- *   untouched so it keeps its full width.
+ *   Session log, and the right-sidebar expand control — shares the top row
+ *   with the window controls. A right margin on the header's **title row
+ *   only** (`[class*="titleRow"]`, 130px) keeps those trailing controls
+ *   clear of the window-control row. The tabs row below is left untouched
+ *   so it keeps its full width.
  *
  * The two states are distinguished with `:has()` on the header's presence and
  * its `headerHidden` class. The layout package's CSS modules use hashed class
@@ -77,7 +78,7 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] {
   height: 100%;
 }
 div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
-  margin-right: ${TITLE_BAR_HEIGHT + 70}px;
+  margin-right: 130px;
 }
 /* macOS: the native traffic lights replace the custom button row, so the
    center column's title row needs no right margin (the Session log returns

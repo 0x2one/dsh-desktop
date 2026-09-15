@@ -38,8 +38,14 @@
 import { useEffect, useState } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 
-/** Height of the title-bar band (px); must match `TITLE_BAR_HEIGHT` in client/index.ts. */
+/** Height of the title-bar band (px). */
 export const TITLE_BAR_HEIGHT = 40
+
+/** Width of one window-control button (px). Three of these make the row. */
+export const WINDOW_CONTROL_BUTTON_WIDTH = 46
+
+/** Width of the minimize / maximize / close row (px). */
+export const WINDOW_CONTROLS_WIDTH = 3 * WINDOW_CONTROL_BUTTON_WIDTH
 
 /** Width of the macOS traffic-light cluster (px); matches the window's default. */
 export const MAC_TRAFFIC_LIGHTS_WIDTH = 72
@@ -124,7 +130,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '46px',
+    width: `${WINDOW_CONTROL_BUTTON_WIDTH}px`,
     height: '40px',
     border: 'none',
     margin: 0,
@@ -417,7 +423,7 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
 
   const rootStyle: React.CSSProperties = {
     ...styles.root,
-    left: anchor !== null ? `${anchor.left + anchor.width - 3 * 46}px` : 'auto',
+    left: anchor !== null ? `${anchor.left + anchor.width - WINDOW_CONTROLS_WIDTH}px` : 'auto',
     right: anchor !== null ? 'auto' : '0px',
   }
 

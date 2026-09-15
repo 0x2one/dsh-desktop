@@ -156,11 +156,17 @@ try {
   const minimize = await page.getByRole('button', { name: 'Minimize' }).count()
   const maximize = await page.getByRole('button', { name: 'Maximize' }).count()
   const close = await page.getByRole('button', { name: 'Close' }).count()
+  const titleRowClearance = await page.evaluate(() => {
+    const tag = document.querySelector('style[data-dsh-css="dsh-desktop-title-bar"]')
+    const css = tag?.textContent ?? ''
+    return /titleRow[\s\S]*margin-right:\s*130px/.test(css)
+  })
 
   console.log(`toolbar visible: ${visible > 0}`)
   console.log(`minimize button: ${minimize > 0}`)
   console.log(`maximize button: ${maximize > 0}`)
   console.log(`close button: ${close > 0}`)
+  console.log(`titleRow clearance css: ${titleRowClearance}`)
 
   // Exercise the handlers through the stubbed bridge. The dsh first-run
   // onboarding overlays a modal mask that intercepts pointer events, so
@@ -190,7 +196,7 @@ try {
     console.error('FAIL: window controls took effect without the desktop preload')
     process.exitCode = 1
   } else if (visible === 0 || minimize === 0 || maximize === 0 || close === 0
-    || !minimizeCalled || !closeCalled || !maximizeToggled) {
+    || !minimizeCalled || !closeCalled || !maximizeToggled || !titleRowClearance) {
     console.error('FAIL: window controls did not render or route correctly')
     process.exitCode = 1
   } else {

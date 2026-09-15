@@ -138,7 +138,7 @@ scripts/
 - **窗口拖动**：无边框窗口没有原生标题栏，插件在**中间内容栏（会话区）顶部 40px 条带**注入 `-webkit-app-region: drag` 拖拽条（`data-dsh-drag-strip`），按下该条带即可移动窗口；操作栏保持 `no-drag`，按钮点击不受影响。
 - **布局占位**：插件注入样式表（`data-dsh-css="dsh-desktop-title-bar"`）：
   - **hero（未打开会话）**：内容栏**无顶部 padding**（`padding-top: 0`），hero 内容区直接顶到窗口最顶端；hero 卡片本身在可视区垂直居中，顶部 40px 空白带由拖拽条覆盖用于拖动窗口；
-  - **active（打开会话）**：会话标题栏从窗口最顶端开始，标题、模式、Session log 与操作栏**同一行**；只给标题行（`[class*="titleRow"]`）加 `margin-right: 110px` 为右侧操作栏让位（Session log 紧贴操作栏左侧、不重叠），**tabs 行保持全宽**（header 不再整体加右边距）。
+  - **active（打开会话）**：会话标题栏从窗口最顶端开始，标题、模式、Session log、「打开右侧边栏」与操作栏**同一行**；只给标题行（`[class*="titleRow"]`）加 `margin-right: 130px` 为右侧操作栏让位（含收起右侧栏时的「打开右侧边栏」），**tabs 行保持全宽**（header 不再整体加右边距）。
   - 注意：header 用「去掉 padding 自然上移」而非 `margin-top: -40px`——负 margin 上移会让 Chromium 命中测试失效（内容视觉在 y=0 但点击区域仍在下移处），导致操作栏看似盖住标题区内容。
 - **操作栏（窗口控制）**：渲染在内容栏右上角，**操作栏整条与按钮背景均透明**（`background: transparent`，由注入样式表 `[data-dsh-window-controls]` / `[data-dsh-wc-button]` 规则驱动），不绘制任何色块、与页面完全融合；图标用 `--dsw-alias-label-secondary` + 85% 透明度。**hover 背景完全由注入 CSS 驱动**（内联样式不设 background/opacity，避免内联优先级压过 `:hover` 规则）：普通按钮 hover 用 `color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent)`（主题感知、清晰可见——dsh 自带 `interactive-bg-hover` 只有 ~6% alpha 几乎不可见），关闭按钮 hover 用 `--dsw-alias-state-error-primary` 变红。验证脚本通过 CDP `CSS.forcePseudoState` 强制 hover 断言背景生效。
 - **拖拽条范围自适应**：hero（未打开会话）时拖拽条覆盖内容栏整个顶部 40px；打开会话后拆成**两段**覆盖标题行的非交互区域——段 1 为标题 crumbs 区（列左缘 → 模式切换左缘），段 2 为模式切换与 Session log 之间的空白弹性区，总宽度从 ~148px 扩大到 ~680px（1280 窗口）。模式切换、Session log 按钮不被拖拽条覆盖，保持可点击。操作栏与拖拽条通过 ResizeObserver/MutationObserver 锚定内容栏与标题栏几何，窗口缩放、侧栏折叠/展开、面板拖动时跟随移动。

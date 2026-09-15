@@ -37,6 +37,8 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
   var import_react = __require("react");
   var import_jsx_runtime = __require("react/jsx-runtime");
   var TITLE_BAR_HEIGHT = 40;
+  var WINDOW_CONTROL_BUTTON_WIDTH = 46;
+  var WINDOW_CONTROLS_WIDTH = 3 * WINDOW_CONTROL_BUTTON_WIDTH;
   var MAC_TRAFFIC_LIGHTS_WIDTH = 72;
   var MAC_TRAFFIC_LIGHTS_HEIGHT = 28;
   var styles = {
@@ -93,7 +95,7 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      width: "46px",
+      width: `${WINDOW_CONTROL_BUTTON_WIDTH}px`,
       height: "40px",
       border: "none",
       margin: 0,
@@ -291,7 +293,7 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
     };
     const rootStyle = {
       ...styles.root,
-      left: anchor !== null ? `${anchor.left + anchor.width - 3 * 46}px` : "auto",
+      left: anchor !== null ? `${anchor.left + anchor.width - WINDOW_CONTROLS_WIDTH}px` : "auto",
       right: anchor !== null ? "auto" : "0px"
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -371,7 +373,7 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] {
   height: 100%;
 }
 div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
-  margin-right: ${TITLE_BAR_HEIGHT + 70}px;
+  margin-right: 130px;
 }
 /* macOS: the native traffic lights replace the custom button row, so the
    center column's title row needs no right margin (the Session log returns
