@@ -11,6 +11,7 @@ import {
   type SetHotkeyResult
 } from './desktop-api'
 import { UPDATE_CHANNELS, type UpdateState, type UpdaterApi } from './update-api'
+import { createDshDesktopApi, type DshDesktopApi } from './dsh-desktop-bridge'
 
 // Tag the document with the platform before the page renders: the window
 // controls plugin branches on `html[data-platform]` CSS and the preload
@@ -108,6 +109,14 @@ const api = {
 
 export type WindowControlsApi = typeof api
 
+// Harness desktop bridge (`window.dshDesktop`): the embedded harness treats a
+// document marked with `data-platform` as its own Electron host and requires
+// this bridge — `@deepseek-ai/dsh-client-shortcuts` throws during activation
+// without it, taking every plugin that injects the `shortcuts` service down
+// with it. It also backs user key-binding persistence (main-process file store)
+// and the close-window command. See `dsh-desktop-bridge.ts`.
+const dshDesktop: DshDesktopApi = createDshDesktopApi()
+
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.
@@ -115,6 +124,7 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
+    contextBridge.exposeInMainWorld('dshDesktop', dshDesktop)
   } catch (error) {
     console.error(error)
   }
@@ -123,4 +133,6 @@ if (process.contextIsolated) {
   window.electron = electronAPI
   // @ts-ignore (define in dts)
   window.api = api
+  // @ts-ignore (define in dts)
+  window.dshDesktop = dshDesktop
 }

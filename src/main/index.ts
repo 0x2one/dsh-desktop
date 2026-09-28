@@ -6,6 +6,7 @@ import { PRODUCT_NAME } from './app-name'
 import { checkRuntimeRequirements } from './requirements'
 import { DshService } from './dsh-service'
 import { registerWindowControls } from './window-controls'
+import { registerShortcutsStore } from './shortcuts-store'
 import { registerDesktopSettings, type DesktopSettingsIpc } from './desktop-settings'
 import type { CreateProfileResult, DesktopSnapshot } from '../preload/desktop-api'
 import { ensurePluginsInstalled, waitForPluginInGraph, defaultDshHome } from './plugin-install'
@@ -248,6 +249,7 @@ if (!gotTheLock) {
 
     // Register window-control and desktop-settings IPC before any page can call them.
     const disposeControls = registerWindowControls(window)
+    const shortcutsStore = registerShortcutsStore(window)
     desktopSettings = registerDesktopSettings(window, {
       getSnapshot: desktopSnapshot,
       beginHotkeyCapture: () => {
@@ -291,6 +293,7 @@ if (!gotTheLock) {
     })
     window.on('closed', () => {
       disposeControls()
+      shortcutsStore.dispose()
       desktopSettings?.dispose()
       desktopSettings = null
       flushAndStopWindowState()

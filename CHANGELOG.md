@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+嵌入 harness 升级到 `@deepseek-ai/dsh@0.1.7-rc.2`。升级后若启动失败，可能需要手动删除 `~/.dsh/profiles/` 中的对应环境。会话日志会迁移到 V4，升级后的会话不支持用旧版本读取。
+
+### Features
+
+- 嵌入 `@deepseek-ai/dsh` 从 `0.1.5-rc.2` 升级到 `0.1.7-rc.2`
+
+### Fixes
+
+- 修复 0.1.7 下桌面端启动失败（`Failed to load plugins`，`dsh-client-shortcuts: failed` 并连累 23 个客户端插件）：preload 为 harness 的 macOS/平台 CSS 设置了 `data-platform`，而 0.1.7 的 `dsh-client-shortcuts` 在 desktop 运行时要求 `window.dshDesktop.keyboard`，缺失即抛 `Desktop keyboard bridge unavailable`。现补齐 `window.dshDesktop` 桥：`keyboard.subscribe` 转发按键事件，`shortcuts` 走主进程文件持久化（`userData/shortcuts.json`），按键绑定可跨启动保留
+
 ---
 
 ## v1.2.4

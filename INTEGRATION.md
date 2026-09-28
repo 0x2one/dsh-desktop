@@ -19,7 +19,7 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 │  └─ index.ts          组装以上模块                 │
 ├─────────────────────────────────────────────────┤
 │ dsh web（独立 Node 子进程）                        │
-│  └─ @deepseek-ai/dsh@0.1.5-rc.2 --profile dsh-desktop │
+│  └─ @deepseek-ai/dsh@0.1.7-rc.2 --profile dsh-desktop │
 │     ├─ 浏览器前端（vite 产物，__DSH_BOOT__ 注入）   │
 │     ├─ @dsh-desktop/window-controls（cordis 插件） │
 │     │  浏览器端注册到 shell.overlay slot → 内容栏   │
@@ -38,7 +38,7 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 | 需求 | 实现 |
 |---|---|
 | 1. 启动检查 Node/pnpm | `src/main/requirements.ts`：spawn `node --version` / `pnpm --version`，缺失或版本不满足（dsh engines `^22.19 || >=24`）时弹窗提示安装指引 |
-| 2. `npx @deepseek-ai/dsh web` 集成，固定 0.1.5-rc.2 | `src/main/dsh-service.ts`：`npx --yes @deepseek-ai/dsh@0.1.5-rc.2 --profile dsh-desktop --no-open --port 0`，解析 `dsh web: http://127.0.0.1:<port>/?token=...` 就绪行（含进程令牌；丢掉令牌会 401） |
+| 2. `npx @deepseek-ai/dsh web` 集成，固定 0.1.7-rc.2 | `src/main/dsh-service.ts`：`npx --yes @deepseek-ai/dsh@0.1.7-rc.2 --profile dsh-desktop --no-open --port 0`，解析 `dsh web: http://127.0.0.1:<port>/?token=...` 就绪行（含进程令牌；丢掉令牌会 401） |
 | 3. 优化调整走 cordis 插件 | `plugins/dsh-desktop-window-controls/`（窗口操作栏）+ `plugins/dsh-desktop-settings/`（设置「桌面」分区）；不改 deepseek-harness 源码，全部通过公开 slot 注册 |
 | 4. profiles 默认路径 + 专属 app profile + 共享本地环境 | **专属 profile `~/.dsh/profiles/dsh-desktop`**（`src/main/profile-setup.ts` 程序化创建，不跑 pnpm）；与用户 `web` profile 隔离，通过 `profiles/node_modules` 共享层复用 dsh 已安装依赖（同一套环境）；插件构建产物、注入器、验证脚本都在本仓库 |
 | 5. 隐藏原生操作栏 + 右上角自定义操作栏 | `frame: false` + cordis 插件渲染到 `shell.overlay`（右上角），经 IPC 驱动窗口 |
@@ -55,15 +55,18 @@ src/main/
   profile-setup.ts  专属 profile（dsh-desktop）程序化创建，复用共享依赖
   plugin-install.ts 插件注入（复制包 + patch 幂等追加 + 等待 boot 图就绪）
   window-controls.ts 窗口控制 IPC（minimize/toggleMaximize/close/isMaximized）
+  shortcuts-store.ts harness 快捷键文件存储（userData/shortcuts.json，IPC + revision/sequence）
   desktop-settings.ts 桌面设置 IPC（快捷键/自启/环境/检查更新）
   settings.ts       共享设置（settings.json 读写，merge-write 保留未知键）
   window-state.ts   窗口大小/位置/最大化记忆（恢复 + 防越界 + 防抖保存）
   app-notify.ts     首次关闭到托盘的一次性系统通知
   launch-at-login.ts 开机自启（app.setLoginItemSettings）+ --hidden 静默启动
 src/preload/
-  index.ts          contextBridge 暴露 window.api.windowControls / desktop
+  index.ts          contextBridge 暴露 window.api.windowControls / desktop / dshDesktop
   index.d.ts        类型声明
   desktop-api.ts    桌面设置 IPC 契约（snapshot + 通道名）
+  dsh-desktop-bridge.ts window.dshDesktop 桥（harness 桌面契约）
+  shortcuts-api.ts  window.dshDesktop 契约（通道名 + 类型）
 src/renderer/       本地兜底页（服务启动失败/开发期）
 plugins/dsh-desktop-window-controls/
   package.json      声明 dsh.client（platform: web）
@@ -103,6 +106,17 @@ scripts/
 - `DSH_TELEMETRY_DISABLED=1` 关闭遥测。
 - 就绪行是带 `?token=` 的 loopback URL，后面可能还有 ` (LAN: ...)`；只取第一段 URL 整串交给 `loadURL`。无令牌访问根路径会 401。
 - Windows 上 npx 是 `.cmd`，spawn 需要 `shell: true`；退出用 `taskkill /T /F` 杀进程树。
+
+### harness 桌面桥（window.dshDesktop）
+
+0.1.7 起，harness 把「文档根节点带 `data-platform`」视为官方 Electron 桌面宿主，并强制要求 `window.dshDesktop`：`@deepseek-ai/dsh-client-shortcuts` 在 desktop 运行时若读不到 `dshDesktop.keyboard`，会直接抛 `Desktop keyboard bridge unavailable`，导致依赖 `shortcuts` 服务的 23 个客户端插件全部 pending，界面显示 `Failed to load plugins`。官方桌面只在自有 scheme `dsh-app://app` 下暴露完整产品 API；dsh-desktop 是 loopback 嵌入、preload 自己设置 `data-platform`，因此必须自建这层桥：
+
+- preload（`dsh-desktop-bridge.ts`）用 `contextBridge` 暴露 `window.dshDesktop = { keyboard, shortcuts }`（不声明 `protocolVersion`，即不冒充官方桌面的 browser/updates 能力）。
+- `keyboard.subscribe` 监听渲染进程 `keydown`，按当前已接受 revision 转发给 harness；Windows/macOS 下 harness 的可配置命令由这条 native 路径分发。
+- `shortcuts.get/edit/recording/subscribe` 经 IPC 到主进程 `shortcuts-store.ts`：文档存 `userData/shortcuts.json`，主进程持有 revision/sequence 并在写入后广播，按键绑定因此可跨启动保留（loopback 端口每次变化，origin-local storage 不可用）。
+- `keyboard.closeWindow(revision)` 经 IPC 关闭窗口（复用窗口关闭语义）。
+
+移除 `data-platform` 可绕过整套契约，但会同时失去 harness 的 macOS 桌面布局（红绿灯避让、`--dsh-frame-leading-clearance` 等），故保留并补齐桥。
 
 ### 插件注入（不碰 dsh 源码）
 1. 构建插件 → `plugins/dsh-desktop-window-controls/lib/` 与 `plugins/dsh-desktop-settings/lib/`（esbuild）。
@@ -180,7 +194,7 @@ node scripts/verify-settings.mjs         # settings merge-write + 窗口 bounds 
 验证脚本全部使用临时 `DSH_HOME`，不污染真实用户数据。
 
 ## 已知边界
-- 首次启动需联网下载 `@deepseek-ai/dsh@0.1.5-rc.2`（180s 超时，失败显示错误页）。
+- 首次启动需联网下载 `@deepseek-ai/dsh@0.1.7-rc.2`（180s 超时，失败显示错误页）。
 - 用户机器需 Node 22.19+/24+ 与 pnpm（启动时检查并提示）。
 - Windows 为主目标；macOS 受支持（红绿灯 + 应用菜单 + 模板托盘图标 + CI 出 dmg/zip），但未签名未公证，首次打开需手动放行。
 - macOS 菜单栏托盘图标使用现有 icon.png 的 alpha 形状做模板图（`setTemplateImage(true)`），未单独绘制菜单栏专用单色资产。
