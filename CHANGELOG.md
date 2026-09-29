@@ -11,6 +11,7 @@
 ### Fixes
 
 - 修复 0.1.7 下桌面端启动失败（`Failed to load plugins`，`dsh-client-shortcuts: failed` 并连累 23 个客户端插件）：preload 为 harness 的 macOS/平台 CSS 设置了 `data-platform`，而 0.1.7 的 `dsh-client-shortcuts` 在 desktop 运行时要求 `window.dshDesktop.keyboard`，缺失即抛 `Desktop keyboard bridge unavailable`。现补齐 `window.dshDesktop` 桥：`keyboard.subscribe` 转发按键事件，`shortcuts` 走主进程文件持久化（`userData/shortcuts.json`），按键绑定可跨启动保留
+- 修复多次启动后出现纯白空白页（无任何报错）：每次 `dsh web` 启动都会用 `?token=` 换取一个**唯一命名**的 `dsh-auth-*` cookie（`127.0.0.1`），它们永久累积在 Electron 持久会话中，最终令 `Cookie` 请求头超过 Node 默认 16 KB 上限，harness 返回 `431 Request Header Fields Too Large`，窗口只画出空白。现在每次加载 harness 前清理 loopback 旧认证 cookie（本次加载再用 URL token 重新认证）
 
 ---
 

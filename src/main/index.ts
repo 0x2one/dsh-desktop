@@ -45,6 +45,47 @@ if (process.env.DSH_DESKTOP_PLUGINS_ROOT === undefined && process.resourcesPath 
   process.env.DSH_DESKTOP_PLUGINS_ROOT = join(__dirname, '../../plugins')
 }
 
+// ---- loopback cookie hygiene ----
+/**
+ * Hosts the harness binds its per-launch loopback service to.
+ */
+const LOOPBACK_COOKIE_HOSTS = new Set(['127.0.0.1', 'localhost'])
+
+/**
+ * Drop stale harness loopback auth cookies.
+ *
+ * Every `dsh web` launch exchanges its `?token=` for a *uniquely named*
+ * `dsh-auth-*` cookie on `127.0.0.1`. Chromium keeps all of them in the
+ * window's persistent session, so after enough launches the `Cookie` request
+ * header exceeds Node's default 16 KB header limit and the harness answers
+ * `431 Request Header Fields Too Large` — the window then paints a blank white
+ * page with no app-level error. Prune before each harness load so the header
+ * stays small; the fresh load authenticates from the URL token again.
+ */
+async function pruneLoopbackAuthCookies(target: Electron.Session): Promise<void> {
+  try {
+    const cookies = await target.cookies.get({})
+    await Promise.all(
+      cookies
+        .filter(
+          (cookie) =>
+            cookie.domain !== undefined &&
+            LOOPBACK_COOKIE_HOSTS.has(cookie.domain.replace(/^\./u, ''))
+        )
+        .map((cookie) => {
+          const path = cookie.path === undefined || cookie.path === '' ? '/' : cookie.path
+          const scheme = cookie.secure ? 'https' : 'http'
+          return target.cookies.remove(
+            `${scheme}://${cookie.domain ?? '127.0.0.1'}${path}`,
+            cookie.name
+          )
+        })
+    )
+  } catch (error) {
+    console.error('[dsh-desktop] failed to prune loopback auth cookies:', error)
+  }
+}
+
 // ---- single-instance lock: a second launch focuses the existing window ----
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
@@ -370,6 +411,11 @@ if (!gotTheLock) {
                 if (window.isDestroyed()) return
                 // A profile switch may have started a newer process; ignore this URL.
                 if (dshService?.getUrl() !== url) return
+                // Prune the previous launches' loopback auth cookies before
+                // navigating; a `Cookie` header over Node's 16 KB limit makes
+                // the harness reply 431 and the window render blank.
+                await pruneLoopbackAuthCookies(window.webContents.session)
+                if (window.isDestroyed()) return
                 void window.loadURL(url)
               })()
             },

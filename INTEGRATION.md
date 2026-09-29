@@ -105,6 +105,7 @@ scripts/
 - 用 `--no-open` 避免 dsh 自己开浏览器。
 - `DSH_TELEMETRY_DISABLED=1` 关闭遥测。
 - 就绪行是带 `?token=` 的 loopback URL，后面可能还有 ` (LAN: ...)`；只取第一段 URL 整串交给 `loadURL`。无令牌访问根路径会 401。
+- **loopback cookie 清理**：`dsh web` 每次启动都用 `?token=` 换一个**唯一命名**的 `dsh-auth-*` cookie（host 固定 `127.0.0.1`，端口每次不同但 cookie 不区分端口），且永不清理。累积约 60+ 次启动后，`Cookie` 请求头超过 Node 默认 16 KB 上限，harness 返回 `431 Request Header Fields Too Large`，窗口只剩白屏、且没有任何应用层报错。`src/main/index.ts` 的 `pruneLoopbackAuthCookies` 在每次 `loadURL` 前删除 `127.0.0.1`/`localhost` 的旧 cookie，本次加载再从 URL token 重新认证。
 - Windows 上 npx 是 `.cmd`，spawn 需要 `shell: true`；退出用 `taskkill /T /F` 杀进程树。
 
 ### harness 桌面桥（window.dshDesktop）
