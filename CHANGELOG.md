@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+---
+
+## v1.2.5
+
 嵌入 harness 升级到 `@deepseek-ai/dsh@0.2.0-rc.1`。升级后若启动失败，可能需要手动删除 `~/.dsh/profiles/` 中的对应环境。会话日志会迁移到 V4，升级后的会话不支持用旧版本读取。
 
 ### Features
