@@ -2,16 +2,17 @@
 
 ## Unreleased
 
-嵌入 harness 升级到 `@deepseek-ai/dsh@0.1.7-rc.2`。升级后若启动失败，可能需要手动删除 `~/.dsh/profiles/` 中的对应环境。会话日志会迁移到 V4，升级后的会话不支持用旧版本读取。
+嵌入 harness 升级到 `@deepseek-ai/dsh@0.2.0-rc.1`。升级后若启动失败，可能需要手动删除 `~/.dsh/profiles/` 中的对应环境。会话日志会迁移到 V4，升级后的会话不支持用旧版本读取。
 
 ### Features
 
-- 嵌入 `@deepseek-ai/dsh` 从 `0.1.5-rc.2` 升级到 `0.1.7-rc.2`
+- 嵌入 `@deepseek-ai/dsh` 从 `0.1.5-rc.2` 升级到 `0.2.0-rc.1`
 
 ### Fixes
 
 - 修复 0.1.7 下桌面端启动失败（`Failed to load plugins`，`dsh-client-shortcuts: failed` 并连累 23 个客户端插件）：preload 为 harness 的 macOS/平台 CSS 设置了 `data-platform`，而 0.1.7 的 `dsh-client-shortcuts` 在 desktop 运行时要求 `window.dshDesktop.keyboard`，缺失即抛 `Desktop keyboard bridge unavailable`。现补齐 `window.dshDesktop` 桥：`keyboard.subscribe` 转发按键事件，`shortcuts` 走主进程文件持久化（`userData/shortcuts.json`），按键绑定可跨启动保留
 - 修复多次启动后出现纯白空白页（无任何报错）：每次 `dsh web` 启动都会用 `?token=` 换取一个**唯一命名**的 `dsh-auth-*` cookie（`127.0.0.1`），它们永久累积在 Electron 持久会话中，最终令 `Cookie` 请求头超过 Node 默认 16 KB 上限，harness 返回 `431 Request Header Fields Too Large`，窗口只画出空白。现在每次加载 harness 前清理 loopback 旧认证 cookie（本次加载再用 URL token 重新认证）
+- 适配 0.2.0 新增的插件兼容性校验：0.2.0 会读取 profile 插件行的 `peerDependencies`，凡是 `@deepseek-ai/dsh*` 版本范围不含当前运行版本（`0.2.0-rc.1`）的插件会被自动禁用（`dsh: disabling profile plugin row ...`），窗口操作栏与「桌面」设置分区因此消失。两个桌面插件把 peer 范围从 `^0.1.0` 提升到 `^0.2.0-rc.1` 并各自 bump 版本（window-controls `0.1.10`、settings `0.1.4`），注入器按版本差异重新拷贝到 profile，无需手动处理
 
 ---
 

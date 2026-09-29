@@ -1,6 +1,6 @@
 {
   "name": "@dsh-desktop/window-controls",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "dsh-desktop window controls (minimize / maximize / close) rendered in the DeepSeek Harness web UI top-right corner",
   "type": "module",
   "main": "lib/index.js",
@@ -32,8 +32,8 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^1.0.0",
-    "@deepseek-ai/dsh-client-ui-layout": "^0.1.0",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0",
+    "@deepseek-ai/dsh-client-ui-layout": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.1",
     "react": "^18.2.0"
   }
 }

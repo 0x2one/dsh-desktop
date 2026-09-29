@@ -19,7 +19,7 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 │  └─ index.ts          组装以上模块                 │
 ├─────────────────────────────────────────────────┤
 │ dsh web（独立 Node 子进程）                        │
-│  └─ @deepseek-ai/dsh@0.1.7-rc.2 --profile dsh-desktop │
+│  └─ @deepseek-ai/dsh@0.2.0-rc.1 --profile dsh-desktop │
 │     ├─ 浏览器前端（vite 产物，__DSH_BOOT__ 注入）   │
 │     ├─ @dsh-desktop/window-controls（cordis 插件） │
 │     │  浏览器端注册到 shell.overlay slot → 内容栏   │
@@ -38,7 +38,7 @@ Electron 应用，将 [deepseek-harness](https://github.com/deepseek-ai/deepseek
 | 需求 | 实现 |
 |---|---|
 | 1. 启动检查 Node/pnpm | `src/main/requirements.ts`：spawn `node --version` / `pnpm --version`，缺失或版本不满足（dsh engines `^22.19 || >=24`）时弹窗提示安装指引 |
-| 2. `npx @deepseek-ai/dsh web` 集成，固定 0.1.7-rc.2 | `src/main/dsh-service.ts`：`npx --yes @deepseek-ai/dsh@0.1.7-rc.2 --profile dsh-desktop --no-open --port 0`，解析 `dsh web: http://127.0.0.1:<port>/?token=...` 就绪行（含进程令牌；丢掉令牌会 401） |
+| 2. `npx @deepseek-ai/dsh web` 集成，固定 0.2.0-rc.1 | `src/main/dsh-service.ts`：`npx --yes @deepseek-ai/dsh@0.2.0-rc.1 --profile dsh-desktop --no-open --port 0`，解析 `dsh web: http://127.0.0.1:<port>/?token=...` 就绪行（含进程令牌；丢掉令牌会 401） |
 | 3. 优化调整走 cordis 插件 | `plugins/dsh-desktop-window-controls/`（窗口操作栏）+ `plugins/dsh-desktop-settings/`（设置「桌面」分区）；不改 deepseek-harness 源码，全部通过公开 slot 注册 |
 | 4. profiles 默认路径 + 专属 app profile + 共享本地环境 | **专属 profile `~/.dsh/profiles/dsh-desktop`**（`src/main/profile-setup.ts` 程序化创建，不跑 pnpm）；与用户 `web` profile 隔离，通过 `profiles/node_modules` 共享层复用 dsh 已安装依赖（同一套环境）；插件构建产物、注入器、验证脚本都在本仓库 |
 | 5. 隐藏原生操作栏 + 右上角自定义操作栏 | `frame: false` + cordis 插件渲染到 `shell.overlay`（右上角），经 IPC 驱动窗口 |
@@ -126,6 +126,7 @@ scripts/
    - 模板文件结尾的 `[]` 必须替换（`[]` 是完整 YAML 文档，后面不能再跟行）。
    - 已有用户内容（MCP 配置等）保留。
 4. `waitForPluginInGraph` 轮询服务页面直到 `__DSH_BOOT__` 含两个插件 id（live patch reload 自动重扫），窗口首屏即带操作栏与设置分区。轮询会先用就绪 URL 上的 token 换 session cookie，再读 `/`（Node `fetch` 不会自动带 `Set-Cookie`）。
+5. **0.2.0 插件兼容性校验**（`dsh-app-boot`）：harness 读取 profile 插件行的 `peerDependencies`，对每个名为 `@deepseek-ai/dsh` / `@deepseek-ai/dsh-*` 的 peer 用 `semver.satisfies(runtimeVersion, range, { includePrerelease: true })` 校验，不满足即 `disabling profile plugin row` 并跳过该行（可经插件管理器 `allow-version` 授予精确版本豁免）。两个桌面插件的 peer 范围因此固定为 `^0.2.0-rc.1`（与嵌入版本一致）；`@deepseek-ai/cordis` / `react` 不在校验范围。改动 peer 后必须 bump 插件 `version`，否则 `installPluginPackage`（版本 + `lib/client.js` 字节比对）不会重新拷贝到 profile。
 
 控制台 `dsh --profile dsh-desktop` 不设 `DSH_DESKTOP=1`，loader 禁用这些 entry；即便 patch 未 gate，浏览器 half 检测不到 `window.api.windowControls` / `window.api.desktop` 也会 no-op。
 
@@ -195,7 +196,7 @@ node scripts/verify-settings.mjs         # settings merge-write + 窗口 bounds 
 验证脚本全部使用临时 `DSH_HOME`，不污染真实用户数据。
 
 ## 已知边界
-- 首次启动需联网下载 `@deepseek-ai/dsh@0.1.7-rc.2`（180s 超时，失败显示错误页）。
+- 首次启动需联网下载 `@deepseek-ai/dsh@0.2.0-rc.1`（180s 超时，失败显示错误页）。
 - 用户机器需 Node 22.19+/24+ 与 pnpm（启动时检查并提示）。
 - Windows 为主目标；macOS 受支持（红绿灯 + 应用菜单 + 模板托盘图标 + CI 出 dmg/zip），但未签名未公证，首次打开需手动放行。
 - macOS 菜单栏托盘图标使用现有 icon.png 的 alpha 形状做模板图（`setTemplateImage(true)`），未单独绘制菜单栏专用单色资产。
