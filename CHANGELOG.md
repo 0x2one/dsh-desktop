@@ -10,6 +10,8 @@
 
 ### Fixes
 
+- 修复新会话（首条消息前）标题行只剩「打开右侧边栏」时被窗口最小化 / 最大化 / 关闭按钮盖住：0.2.0 的 slot 运行时把会话标题行包进一个 `display: contents` 元素，原注入样式的 `[class*="_header"] > [class*="titleRow"]` 子代选择器静默失配，`margin-right: 130px` 不再生效（打开会话时的 Session log 等尾部控件同样受影响）。改用后代选择器，并让 blank 态拖拽条止于角位左缘，避免拖拽区吞掉按钮点击。`@dsh-desktop/window-controls` bump 到 `0.1.11`
+- 修复 `scripts/verify-plugin-browser.mjs` 在本机只装旧版 chromium 时启动失败：`chromium.executablePath()` 会返回未安装的修订路径，现按文件存在性回退到已安装的修订
 - 修复 0.1.7 下桌面端启动失败（`Failed to load plugins`，`dsh-client-shortcuts: failed` 并连累 23 个客户端插件）：preload 为 harness 的 macOS/平台 CSS 设置了 `data-platform`，而 0.1.7 的 `dsh-client-shortcuts` 在 desktop 运行时要求 `window.dshDesktop.keyboard`，缺失即抛 `Desktop keyboard bridge unavailable`。现补齐 `window.dshDesktop` 桥：`keyboard.subscribe` 转发按键事件，`shortcuts` 走主进程文件持久化（`userData/shortcuts.json`），按键绑定可跨启动保留
 - 修复多次启动后出现纯白空白页（无任何报错）：每次 `dsh web` 启动都会用 `?token=` 换取一个**唯一命名**的 `dsh-auth-*` cookie（`127.0.0.1`），它们永久累积在 Electron 持久会话中，最终令 `Cookie` 请求头超过 Node 默认 16 KB 上限，harness 返回 `431 Request Header Fields Too Large`，窗口只画出空白。现在每次加载 harness 前清理 loopback 旧认证 cookie（本次加载再用 URL token 重新认证）
 - 适配 0.2.0 新增的插件兼容性校验：0.2.0 会读取 profile 插件行的 `peerDependencies`，凡是 `@deepseek-ai/dsh*` 版本范围不含当前运行版本（`0.2.0-rc.1`）的插件会被自动禁用（`dsh: disabling profile plugin row ...`），窗口操作栏与「桌面」设置分区因此消失。两个桌面插件把 peer 范围从 `^0.1.0` 提升到 `^0.2.0-rc.1` 并各自 bump 版本（window-controls `0.1.10`、settings `0.1.4`），注入器按版本差异重新拷贝到 profile，无需手动处理

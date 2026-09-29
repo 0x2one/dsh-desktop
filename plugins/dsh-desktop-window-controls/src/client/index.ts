@@ -62,7 +62,10 @@ const TITLE_BAR_CSS_ID = 'dsh-desktop-title-bar'
  *   with the window controls. A right margin on the header's **title row
  *   only** (`[class*="titleRow"]`, 130px) keeps those trailing controls
  *   clear of the window-control row. The tabs row below is left untouched
- *   so it keeps its full width.
+ *   so it keeps its full width. The same margin applies in the **blank**
+ *   state (a new Session before its first message), where the title row
+ *   carries only the right-sidebar expand control: without it the control
+ *   sits under the window-control row at the column's right edge.
  *
  * The two states are distinguished with `:has()` on the header's presence and
  * its `headerHidden` class. The layout package's CSS modules use hashed class
@@ -71,20 +74,26 @@ const TITLE_BAR_CSS_ID = 'dsh-desktop-title-bar'
  * `_header`, and the title row's class contains `titleRow`. Rules are scoped
  * inside the center column so they cannot affect the sidebar or other
  * surfaces. `:has()` is supported by the Electron 39 Chromium.
+ *
+ * The title row is matched with a **descendant** combinator, not a child one:
+ * the slot runtime wraps the `conversation.session.header` entry in a
+ * generated `display: contents` element, so the title row is a grandchild of
+ * the header. The `_header` ancestor keeps the rule off the plugin-manager
+ * page's own `titleRow` (which has no conversation header above it).
  */
 const titleBarCss = `
 div:has(> [data-shell-overlay]) > [class*="centerCol"] {
   padding-top: 0px;
   height: 100%;
 }
-div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] [class*="titleRow"] {
   margin-right: 130px;
 }
 /* macOS: the native traffic lights replace the custom button row, so the
    center column's title row needs no right margin (the Session log returns
    to its stock position) and the sidebar drag strip is supplied by the
    component (data-dsh-sidebar-drag-strip). */
-html[data-platform="darwin"] div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+html[data-platform="darwin"] div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] [class*="titleRow"] {
   margin-right: 0px;
 }
 [data-dsh-window-controls] {

@@ -64,11 +64,14 @@ interface AnchorRect {
 }
 
 /**
- * Drag-strip geometry. In the hero state a single strip covers the whole
- * title band of the column. With a conversation header open the strip is
- * split into segments that cover only the non-interactive areas of the title
- * row (the session-title crumbs and the blank flex space after the mode
- * switch), so the mode switch and Session log buttons stay clickable.
+ * Drag-strip geometry. Without a Session the header's title row is empty and
+ * a single strip covers the whole title band of the column. With a
+ * conversation header open the strip is split into segments that cover only
+ * the non-interactive areas of the title row (the session-title crumbs and
+ * the blank flex space after the mode switch), so the mode switch and Session
+ * log buttons stay clickable. In the blank state (a new Session before its
+ * first message) one strip covers the band left of the title row's trailing
+ * corner seat (the right-sidebar expand control).
  */
 type DragRect = {
   left: number
@@ -316,6 +319,18 @@ function findUtilities(header: HTMLElement): HTMLElement | null {
 }
 
 /**
+ * The header's far-right corner seat, which hosts the right-sidebar expand
+ * control while its panel is collapsed. In the blank state (a new Session
+ * before its first message) it is the title row's only interactive element,
+ * so the drag strip must stop before it.
+ * @param header - the conversation header element.
+ * @returns the corner seat element, or null when the header has none.
+ */
+function findCornerSeat(header: HTMLElement): HTMLElement | null {
+  return header.querySelector<HTMLElement>('[data-conversation-header-corner]')
+}
+
+/**
  * The window control row and drag strip, anchored to the center column.
  * Rendered inside the frame-wide shell.overlay layer; the layer is
  * click-through except for entries, and our roots opt into pointer events via
@@ -385,8 +400,17 @@ export function WindowControls(_props: WindowControlsProps): React.JSX.Element {
         clamp(modeRight, utilsLeft)
       }
       if (segments.length === 0) {
-        // Fallback: keep the right part clear of the control row.
-        segments.push({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) })
+        // Blank Session: the title row carries only the trailing corner seat
+        // (the right-sidebar expand control), which the injected stylesheet
+        // shifts left by the window-control clearance. Cover the empty band to
+        // its left edge: the strip paints above header content, so stopping at
+        // the seat is what keeps the expand button clickable. Without a seat
+        // (panel expanded) keep the right part clear of the control row.
+        const corner = findCornerSeat(header)?.getBoundingClientRect()
+        const right = corner !== undefined && corner.width > 0
+          ? corner.left - 8
+          : r.left + Math.max(0, r.width - TITLE_BAR_HEIGHT - 120)
+        clamp(r.left, right)
       }
       setDrag(segments)
     }

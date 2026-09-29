@@ -221,6 +221,9 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
   function findUtilities(header) {
     return header.querySelector('[class*="_headerUtilities"]');
   }
+  function findCornerSeat(header) {
+    return header.querySelector("[data-conversation-header-corner]");
+  }
   function WindowControls(_props) {
     void _props;
     const [maximized, setMaximized] = (0, import_react.useState)(false);
@@ -267,7 +270,9 @@ var __DSH_WINDOW_CONTROLS_EXPORTS = (() => {
           clamp(modeRight, utilsLeft);
         }
         if (segments.length === 0) {
-          segments.push({ left: r.left, width: Math.max(0, r.width - TITLE_BAR_HEIGHT - 120) });
+          const corner = findCornerSeat(header)?.getBoundingClientRect();
+          const right = corner !== void 0 && corner.width > 0 ? corner.left - 8 : r.left + Math.max(0, r.width - TITLE_BAR_HEIGHT - 120);
+          clamp(r.left, right);
         }
         setDrag(segments);
       };
@@ -372,14 +377,14 @@ div:has(> [data-shell-overlay]) > [class*="centerCol"] {
   padding-top: 0px;
   height: 100%;
 }
-div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] [class*="titleRow"] {
   margin-right: 130px;
 }
 /* macOS: the native traffic lights replace the custom button row, so the
    center column's title row needs no right margin (the Session log returns
    to its stock position) and the sidebar drag strip is supplied by the
    component (data-dsh-sidebar-drag-strip). */
-html[data-platform="darwin"] div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] > [class*="titleRow"] {
+html[data-platform="darwin"] div:has(> [data-shell-overlay]) > [class*="centerCol"] [class*="_header"] [class*="titleRow"] {
   margin-right: 0px;
 }
 [data-dsh-window-controls] {
